@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sentinelstack.config import settings
 from sentinelstack.auth.router import router as auth_router
+from sentinelstack.gateway.middleware import RequestContextMiddleware
+from sentinelstack.gateway.context import get_context
+
 
 
 @asynccontextmanager
@@ -20,14 +23,18 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.add_middleware(RequestContextMiddleware)
+
 
 @app.get("/health")
 async def health_check():
     """
-    Basic health check to verify transparency of configuration.
+    Returns system status and current request context.
     """
+    ctx = get_context()
     return {
         "status": "active",
         "env": settings.ENV,
-        "service": "SentinelStack Gateway"
+        "request_id": ctx.request_id if ctx else "unknown",
+        "your_ip": ctx.client_ip if ctx else "unknown"
     }
