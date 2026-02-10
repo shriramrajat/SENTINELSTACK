@@ -14,7 +14,7 @@ We are executing a 10-day sprint to build the core infrastructure.
 - [x] **Day 2**: Identity Schema (Postgres+Alembic)
 - [x] **Day 3**: Auth Logic (JWT/Bcrypt)
 - [x] **Day 4**: Request Context Spine
-- [ ] **Day 5**: Rate Limit Engine (Redis+Lua)
+- [x] **Day 5**: Rate Limit Engine (Redis+Lua)
 - [ ] **Day 6**: Control Middleware
 - [ ] **Day 7**: Async Logging Pipeline
 - [ ] **Day 8**: Aggregation & Metrics
