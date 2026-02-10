@@ -48,6 +48,7 @@ graph TD
     Gateway -->|4. Business| App[Business Logic]
     Gateway -->|5. Logs (Async)| Queue[Log Queue]
     Queue -.->|Batch Write| DB[(PostgreSQL)]
+```
 
 ## 4. Technology Stack
 - **Core**: Python 3.10+, FastAPI, Pydantic
