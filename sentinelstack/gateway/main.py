@@ -8,7 +8,7 @@ from sentinelstack.gateway.context import get_context
 from sentinelstack.logging.service import log_service
 from sentinelstack.stats.router import router as stats_router
 from fastapi.staticfiles import StaticFiles
-
+from sentinelstack.ai.router import router as ai_router
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app = FastAPI(
 app.add_middleware(RequestContextMiddleware)
 app.include_router(auth_router)
 app.include_router(stats_router)
+app.include_router(ai_router)
 app.mount("/dashboard", StaticFiles(directory="sentinelstack/static", html=True), name="static")
 
 
