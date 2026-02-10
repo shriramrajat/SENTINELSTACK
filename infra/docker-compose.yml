@@ -5,13 +5,13 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      POSTGRES_USER: sentinel_user
-      POSTGRES_PASSWORD: sentinel_password
-      POSTGRES_DB: sentinel_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: NewStrongPassword123
+      POSTGRES_DB: sentinel_stack
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    # volumes:
+    #   - infra_postgres_data_v2:/var/lib/postgresql/data
     networks:
       - sentinel_net
 
@@ -24,7 +24,8 @@ services:
       - sentinel_net
 
 volumes:
-  postgres_data:
+  infra_postgres_data_v2:
+
 
 networks:
   sentinel_net:
