@@ -32,7 +32,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         
         try:
             # 3. Rate Limit Check
-            if ctx.path not in ["/health", "/docs", "/openapi.json"]:
+            if ctx.path not in ["/health", "/docs", "/openapi.json"] and \
+               not ctx.path.startswith(("/stats", "/ai", "/dashboard", "/static")):
                 allowed, headers = await rate_limiter.check_request(ctx)
                 if not allowed:
                     status_code = 429

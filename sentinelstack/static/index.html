@@ -47,7 +47,17 @@
                     Live</span>
             </div>
         </header>
-
+        <div id="ai-panel"
+            class="mb-8 p-4 rounded-lg bg-slate-800 border-l-4 border-slate-600 hidden transition-all duration-300">
+            <div class="flex items-start gap-4">
+                <div class="text-2xl mt-1">🤖</div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-1">Sentinel AI Insight</h3>
+                    <p id="ai-message" class="text-slate-300">Analyzing traffic patterns...</p>
+                    <div id="ai-details" class="mt-2 text-xs text-slate-500 font-mono"></div>
+                </div>
+            </div>
+        </div>
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="card">
@@ -95,10 +105,44 @@
                 console.error("Failed to fetch stats", err);
             }
         }
+        async function fetchAI() {
+            try {
+                const res = await fetch('/ai/insight?minutes=15');
+                const data = await res.json();
 
+                const panel = document.getElementById('ai-panel');
+                const msg = document.getElementById('ai-message');
+                const details = document.getElementById('ai-details');
+                // Reveal panel
+                panel.classList.remove('hidden');
+                // Update Content
+                msg.innerText = data.insight;
+
+                // Styling based on severity
+                panel.className = "mb-8 p-4 rounded-lg border-l-4 transition-all duration-300 ";
+                if (data.severity === 'critical' || data.severity === 'error') {
+                    panel.className += "bg-red-900/20 border-red-500";
+                    msg.className = "text-red-200";
+                } else if (data.severity === 'warning') {
+                    panel.className += "bg-yellow-900/20 border-yellow-500";
+                    msg.className = "text-yellow-200";
+                } else {
+                    panel.className += "bg-emerald-900/20 border-emerald-500";
+                    msg.className = "text-emerald-200";
+                }
+                // Show details if critical
+                if (data.details && data.details.length > 0) {
+                    details.innerText = "Details: " + data.details.join(", ");
+                } else {
+                    details.innerText = "";
+                }
+            } catch (e) { console.error("AI Check failed", e); }
+        }
         // Initial fetch and interval
         fetchStats();
+        fetchAI()
         setInterval(fetchStats, 5000);
+        setInterval(fetchAI, 10000);
     </script>
 </body>
 
