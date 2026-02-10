@@ -7,6 +7,8 @@ from sentinelstack.gateway.middleware import RequestContextMiddleware
 from sentinelstack.gateway.context import get_context
 from sentinelstack.logging.service import log_service
 from sentinelstack.stats.router import router as stats_router
+from fastapi.staticfiles import StaticFiles
+
 
 
 @asynccontextmanager
@@ -29,6 +31,8 @@ app = FastAPI(
 )
 app.add_middleware(RequestContextMiddleware)
 app.include_router(auth_router)
+app.include_router(stats_router)
+app.mount("/dashboard", StaticFiles(directory="sentinelstack/static", html=True), name="static")
 
 
 @app.get("/health")
@@ -44,4 +48,3 @@ async def health_check():
         "your_ip": ctx.client_ip if ctx else "unknown"
     }
 
-app.include_router(stats_router)

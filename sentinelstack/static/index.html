@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelStack Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .card {
+            background-color: #1e293b;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+
+<body class="p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-white">SentinelStack <span class="text-sky-400">Ops</span></h1>
+                <p class="text-slate-400">Live Traffic & Security Monitoring</p>
+            </div>
+            <div class="flex gap-2">
+                <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium animate-pulse">●
+                    Live</span>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="card">
+                <div class="stat-label">Total Requests (1h)</div>
+                <div class="stat-value" id="total-req">0</div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Error Rate</div>
+                <div class="stat-value text-red-400" id="error-rate">0%</div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Avg Latency</div>
+                <div class="stat-value text-emerald-400" id="avg-lat">0<span class="text-lg">ms</span></div>
+            </div>
+            <div class="card">
+                <div class="stat-label">Throughput</div>
+                <div class="stat-value text-indigo-400" id="rpm">0<span class="text-lg">rpm</span></div>
+            </div>
+        </div>
+
+        <div class="text-center text-slate-500 text-sm mt-12">
+            Auto-refreshing every 5 seconds.
+        </div>
+    </div>
+
+    <script>
+        async function fetchStats() {
+            try {
+                const response = await fetch('/stats/dashboard?minutes=60');
+                const data = await response.json();
+
+                // Update DOM
+                document.getElementById('total-req').innerText = data.total_requests;
+                document.getElementById('error-rate').innerText = data.error_rate_percent + '%';
+                document.getElementById('avg-lat').innerText = data.avg_latency_ms + 'ms';
+                document.getElementById('rpm').innerText = data.rpm + 'rpm';
+
+                // Color coding
+                const errEl = document.getElementById('error-rate');
+                if (data.error_rate_percent > 5) errEl.className = "stat-value text-red-500";
+                else if (data.error_rate_percent > 1) errEl.className = "stat-value text-yellow-500";
+                else errEl.className = "stat-value text-emerald-500";
+
+            } catch (err) {
+                console.error("Failed to fetch stats", err);
+            }
+        }
+
+        // Initial fetch and interval
+        fetchStats();
+        setInterval(fetchStats, 5000);
+    </script>
+</body>
+
+</html>
