@@ -6,7 +6,7 @@ from sentinelstack.auth.router import router as auth_router
 from sentinelstack.gateway.middleware import RequestContextMiddleware
 from sentinelstack.gateway.context import get_context
 from sentinelstack.logging.service import log_service
-
+from sentinelstack.stats.router import router as stats_router
 
 
 @asynccontextmanager
@@ -43,3 +43,5 @@ async def health_check():
         "request_id": ctx.request_id if ctx else "unknown",
         "your_ip": ctx.client_ip if ctx else "unknown"
     }
+
+app.include_router(stats_router)
