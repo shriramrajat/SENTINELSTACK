@@ -11,6 +11,7 @@ from alembic import context
 from sentinelstack.config import settings
 from sentinelstack.database import Base
 from sentinelstack.auth.models import User  # Must import models so Alembic 'sees' them
+from sentinelstack.logging.models import RequestLog
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
