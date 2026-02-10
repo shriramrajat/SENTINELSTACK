@@ -2,24 +2,25 @@
 
 > **A Unified API Gateway Infrastructure for Control, Safety, and Operability.**
 
-![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)
+![Status](https://img.shields.io/badge/Status-Alpha%20v1-green)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green)
 ![Redis](https://img.shields.io/badge/Redis-Token%20Bucket-red)
 
-## 🚧 Project Status: Active Development
-**SentinelStack is currently under construction.**
-We are executing a 10-day sprint to build the core infrastructure.
+## 🚧 Project Status: Alpha v1 Complete
+**SentinelStack Core Infrastructure is Operational.**
+The 10-day sprint is complete. The system is ready for integration testing.
+
 - [x] **Day 1**: Foundation & Docker
 - [x] **Day 2**: Identity Schema (Postgres+Alembic)
 - [x] **Day 3**: Auth Logic (JWT/Bcrypt)
 - [x] **Day 4**: Request Context Spine
 - [x] **Day 5**: Rate Limit Engine (Redis+Lua)
 - [x] **Day 6**: Control Middleware
-- [ ] **Day 7**: Async Logging Pipeline
-- [ ] **Day 8**: Aggregation & Metrics
-- [ ] **Day 9**: Ops Dashboard
-- [ ] **Day 10**: AI Explainability & Polish
+- [x] **Day 7**: Async Logging Pipeline
+- [x] **Day 8**: Aggregation & Metrics
+- [x] **Day 9**: Ops Dashboard
+- [x] **Day 10**: AI Explainability & Polish
 
 ---
 
@@ -87,5 +88,16 @@ graph TD
     python -m uvicorn sentinelstack.gateway.main:app --reload
     ```
 
-## 6. License
+## 7. Features & Access
+### 🤖 AI-Powered Ops Dashboard
+Access the real-time monitoring dashboard at: `http://localhost:8000/dashboard/`
+- **Live Metrics**: Throughput (RPM), Latency (ms), Error Rate.
+- **AI Diagnostics**: The system self-diagnoses traffic anomalies (e.g., DDoS, Brute Force) and displays human-readable insights.
+
+### 🔒 Security & Limits
+- **Authentication**: JWT-based stateless auth.
+- **Rate Limiting**: Configurable Token Bucket algorithm backed by Redis Lua scripts.
+- **Logging**: Non-blocking async logger writing to PostgreSQL.
+
+## 8. License
 Proprietary / TBD.
