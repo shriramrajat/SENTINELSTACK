@@ -1,29 +1,34 @@
+import asyncio
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from sentinelstack.config import settings
 from sentinelstack.auth.router import router as auth_router
 from sentinelstack.gateway.middleware import RequestContextMiddleware
 from sentinelstack.gateway.context import get_context
+from sentinelstack.logging.service import log_service
 
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Log configuration (sanitize secrets in real usage)
-    print(f"INFO:    Starting {settings.APP_NAME} in {settings.ENV} mode")
-    print(f"INFO:    Database: {settings.DATABASE_URL}")
-    print(f"INFO:    Redis: {settings.REDIS_URL}")
+    # Startup
+    print(f"INFO:    Starting {settings.APP_NAME}")
+    
+    # Start Log Worker Task
+    task = asyncio.create_task(log_service.worker())
+    
     yield
-    # Shutdown logic (close connections) goes here
+    
+    # Shutdown
     print(f"INFO:    Shutting down {settings.APP_NAME}")
-
+    log_service.is_running = False
+    await task 
 app = FastAPI(
     title=settings.APP_NAME,
     lifespan=lifespan
 )
-
-app.include_router(auth_router)
 app.add_middleware(RequestContextMiddleware)
+app.include_router(auth_router)
 
 
 @app.get("/health")
