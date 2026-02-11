@@ -1,103 +1,115 @@
-# SentinelStack v1 (In Development)
+# SentinelStack
 
-> **A Unified API Gateway Infrastructure for Control, Safety, and Operability.**
+> **A High-Performance API Gateway Infrastructure for Control, Security, and Observability.**
 
 ![Status](https://img.shields.io/badge/Status-Alpha%20v1-green)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green)
 ![Redis](https://img.shields.io/badge/Redis-Token%20Bucket-red)
 
-## 🚧 Project Status: Alpha v1 Complete
-**SentinelStack Core Infrastructure is Operational.**
-The 10-day sprint is complete. The system is ready for integration testing.
+## � Overview
 
-- [x] **Day 1**: Foundation & Docker
-- [x] **Day 2**: Identity Schema (Postgres+Alembic)
-- [x] **Day 3**: Auth Logic (JWT/Bcrypt)
-- [x] **Day 4**: Request Context Spine
-- [x] **Day 5**: Rate Limit Engine (Redis+Lua)
-- [x] **Day 6**: Control Middleware
-- [x] **Day 7**: Async Logging Pipeline
-- [x] **Day 8**: Aggregation & Metrics
-- [x] **Day 9**: Ops Dashboard
-- [x] **Day 10**: AI Explainability & Polish
+**SentinelStack** is a production-oriented API Gateway designed to be the hard outer shell of your application infrastructure. It sits in front of your business logic, providing a unified layer for identity management, traffic control, and intelligent observability.
 
----
+Unlike generic reverse proxies, SentinelStack integrates **deterministic rate limiting**, **stateless authentication**, and **AI-assisted incident diagnostics** directly into the request lifecycle.
 
-## 1. What SentinelStack Actually Is
-SentinelStack is a production-oriented API Gateway Infrastructure Core that sits in front of application APIs. It is unrelated to traditional "microservices" products; it is a single deployable system designed to be the hard outer shell of your API.
+## 🚀 Key Features
 
-It provides **cross-cutting control primitives**:
-1.  **Identity**: Who are you? (Bcrypt/JWT)
-2.  **Control**: Can you do this? (Deterministic Rate Limiting)
-3.  **Observability**: What happened? (Async Logging)
-4.  **Explanation**: Why did it break? (AI-Assisted Incident Summaries)
+-   **🛡️ Robust Identity & Auth**: Secure, stateless authentication using JWT and Bcrypt hashing.
+-   **⚡ Deterministic Rate Limiting**: Redis-backed Token Bucket algorithm ensures precise traffic control per user/IP.
+-   **👁️ Total Observability**: Asynchronous, non-blocking logging pipeline that persists every request to PostgreSQL without latency penalties.
+-   **🧠 AI Intelligence Engine**: Heuristic-based AI analyzes traffic patterns in real-time to detect anomalies (DDoS, Brute Force) and provides human-readable insights.
+-   **📊 Live Ops Dashboard**: Real-time visualization of throughput (RPM), latency, and error rates.
 
-## 2. Design Philosophy (Non-Negotiable)
-1.  **Gateway-First**: All traffic flows through one controlled request lifecycle.
-2.  **Deterministic Control**: Rate limits are rule-based and explainable. No "maybe" logic.
-3.  **Async by Default**: Logging never blocks the request. If the logger dies, the API stays up.
-4.  **AI Explains, Never Decides**: AI summarizes confirmed incidents. It never bans users autonomously.
+## 🏗️ Architecture
 
-## 3. High-Level Architecture
+SentinelStack follows a Gateway-First design philosophy where cross-cutting concerns are handled before traffic reaches business logic.
+
 ```mermaid
 graph TD
     Client -->|HTTP Request| Gateway[SentinelStack Gateway]
-    Gateway -->|1. Context| Context[Request Context]
+    Gateway -->|1. Context| Context[Request Context Spine]
     Gateway -->|2. Control| RateLimit[Redis Token Bucket]
     Gateway -->|3. Auth| Auth[JWT Validation]
-    Gateway -->|4. Business| App[Business Logic]
+    Gateway -->|4. Business| App[Business Logic / APIs]
     Gateway -->|5. Logs (Async)| Queue[Log Queue]
     Queue -.->|Batch Write| DB[(PostgreSQL)]
+    Queue -.->|Analytics| AI[AI Heuristics Engine]
 ```
 
-## 4. Technology Stack
-- **Core**: Python 3.10+, FastAPI, Pydantic
-- **Data**: PostgreSQL (AsyncPG), SQLAlchemy 2.0
-- **Cache**: Redis (AsyncIO) + Lua Scripts
-- **Infra**: Docker Compose
+## 🛠️ Technology Stack
 
-## 5. Development Setup
+-   **Core Framework**: Python 3.10+, FastAPI, Pydantic
+-   **Database**: PostgreSQL (AsyncPG), SQLAlchemy 2.0
+-   **Caching & Throttling**: Redis (AsyncIO) + Lua Scripts
+-   **Infrastructure**: Docker & Docker Compose
+-   **Frontend**: HTML5, TailwindCSS, Chart.js (Dashboard)
+
+## ⚡ Getting Started
 
 ### Prerequisites
-- Docker & Docker Compose
-- Python 3.10+
+-   Docker & Docker Compose
+-   Python 3.10+
 
-### Quick Start
-1.  **Clone & Env**:
+### Installation
+
+1.  **Clone the Repository**
     ```bash
     git clone https://github.com/yourusername/SentinelStack.git
     cd SentinelStack
+    ```
+
+2.  **Set Up Virtual Environment**
+    ```bash
     python -m venv venv
-    source venv/bin/activate  # Windows: venv\scripts\activate
+    # Windows
+    venv\scripts\activate
+    # Mac/Linux
+    source venv/bin/activate
+    ```
+
+3.  **Install Dependencies**
+    ```bash
     pip install -r requirements.txt
     ```
 
-2.  **Start Infrastructure**:
+4.  **Start Infrastructure (Postgres & Redis)**
     ```bash
     docker-compose -f infra/docker-compose.yml up -d
     ```
 
-3.  **Run Migrations**:
+5.  **Initialize Database**
     ```bash
     python -m alembic upgrade head
     ```
 
-4.  **Start Gateway**:
+6.  **Run the Gateway**
     ```bash
     python -m uvicorn sentinelstack.gateway.main:app --reload
     ```
 
-## 7. Features & Access
-### 🤖 AI-Powered Ops Dashboard
-Access the real-time monitoring dashboard at: `http://localhost:8000/dashboard/`
-- **Live Metrics**: Throughput (RPM), Latency (ms), Error Rate.
-- **AI Diagnostics**: The system self-diagnoses traffic anomalies (e.g., DDoS, Brute Force) and displays human-readable insights.
+## 🖥️ Usage
 
-### 🔒 Security & Limits
-- **Authentication**: JWT-based stateless auth.
-- **Rate Limiting**: Configurable Token Bucket algorithm backed by Redis Lua scripts.
-- **Logging**: Non-blocking async logger writing to PostgreSQL.
+### Ops Dashboard
+Access the live metrics and AI insights at:
+`http://localhost:8000/dashboard/`
 
-## 8. License
-Proprietary / TBD.
+### API Documentation
+Interactive API docs (Swagger UI) are available at:
+`http://localhost:8000/docs`
+
+### Key Endpoints
+-   `POST /auth/signup`: Register a new user.
+-   `POST /auth/token`: Login and receive a JWT.
+-   `GET /health`: System health check.
+-   `GET /stats/dashboard`: Raw metrics JSON.
+-   `GET /ai/insight`: AI-generated system status.
+
+## 🔮 Roadmap (v2)
+-   [ ] Distributed Rate Limiting (Redis Cluster)
+-   [ ] User-Agent / Bot Detection
+-   [ ] Integration with LLMs (OpenAI/Gemini) for deep log analysis
+-   [ ] Comprehensive Unit Test Suite
+
+## 📄 License
+Proprietary / Confidential. All rights reserved.
