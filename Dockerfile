@@ -3,7 +3,9 @@
 # Goal: Compile dependencies and build wheels.
 # We use a larger image (slim, not alpine) to ensure binary compatibility.
 # -------------------------------------------------------------------
-FROM python:3.10-slim as builder
+
+
+FROM python:3.10-slim-bookworm AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -30,7 +32,8 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.t
 # STAGE 2: Final Runner
 # Goal: Secure, minimal runtime environment.
 # -------------------------------------------------------------------
-FROM python:3.10-slim
+
+FROM python:3.10-slim-bookworm
 
 # Create a non-root group and user 'appuser' for security
 # Never run production apps as root!
@@ -38,7 +41,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Install ONLY runtime libraries (libpq is needed for Postgres)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq-5 && \
+    apt-get install -y --no-install-recommends libpq5 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
