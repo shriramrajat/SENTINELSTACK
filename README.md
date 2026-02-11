@@ -59,7 +59,45 @@ graph TD
     cd SentinelStack
     ```
 
+
+## ☁️ Deployment (Production)
+
+This project is containerized and ready for cloud deployment.
+
+### Prerequisites (Production)
+- A Linux VPS (Ubuntu 24.04 LTS recommended)
+- Docker & Docker Compose installed on the server
+- A `.env.prod` file (template below)
+
+### Quick Start (Server)
+1.  **Clone & Setup**:
+    ```bash
+    git clone https://github.com/shriramrajat/sentinelstack.git
+    cd SentinelStack
+    ```
+2.  **Configure Secrets**:
+    Create a `.env.prod` file (Do NOT commit this to git):
+    ```ini
+    POSTGRES_USER=admin
+    POSTGRES_PASSWORD=secure_random_password
+    POSTGRES_DB=sentinel_prod
+    POSTGRES_HOST=db
+    SECRET_KEY=long_random_string
+    ```
+3.  **Launch**:
+    ```bash
+    docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+    ```
+4.  **Verify**:
+    Visit `http://YOUR_SERVER_IP:8000/health`
+
+### HTTPS (Optional)
+To add auto-HTTPS with Caddy, uncomment the `caddy` service in `docker-compose.prod.yml` and add a `Caddyfile`.
+
+---
+
 2.  **Set Up Virtual Environment**
+
     ```bash
     python -m venv venv
     # Windows

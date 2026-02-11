@@ -1,9 +1,19 @@
+# Environment & Secrets (NEVER COMMIT THESE)
+.env
+.env.prod
+.env.*
+*.pem
+
+# Python & Venv
+venv/
+.venv/
 __pycache__/
 *.pyc
-.env
-.venv
-venv/
+
+# Data & Logs
 postgres_data/
+*.log
+
+# IDEs
 .idea/
 .vscode/
-*.log
