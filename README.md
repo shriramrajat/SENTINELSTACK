@@ -27,14 +27,14 @@ SentinelStack follows a Gateway-First design philosophy where cross-cutting conc
 
 ```mermaid
 graph TD
-    Client -->|HTTP Request| Gateway[SentinelStack Gateway]
-    Gateway -->|1. Context| Context[Request Context Spine]
-    Gateway -->|2. Control| RateLimit[Redis Token Bucket]
-    Gateway -->|3. Auth| Auth[JWT Validation]
-    Gateway -->|4. Business| App[Business Logic / APIs]
-    Gateway -->|5. Logs (Async)| Queue[Log Queue]
-    Queue -.->|Batch Write| DB[(PostgreSQL)]
-    Queue -.->|Analytics| AI[AI Heuristics Engine]
+    Client -->|"HTTP Request"| Gateway["SentinelStack Gateway"]
+    Gateway -->|"1. Context"| Context["Request Context Spine"]
+    Gateway -->|"2. Control"| RateLimit["Redis Token Bucket"]
+    Gateway -->|"3. Auth"| Auth["JWT Validation"]
+    Gateway -->|"4. Business"| App["Business Logic / APIs"]
+    Gateway -->|"5. Logs (Async)"| Queue["Log Queue"]
+    Queue -.->|"Batch Write"| DB[("(PostgreSQL)")]
+    Queue -.->|"Analytics"| AI["AI Heuristics Engine"]
 ```
 
 ## 🛠️ Technology Stack
