@@ -5,7 +5,7 @@ services:
   # CORE API GATEWAY
   # -------------------------------------------------------------
   sentinel_api:
-    image: sentinelstack:v1
+    image: shriramrajat/sentinelstack:v1
     container_name: sentinel_api
     restart: always
     # In production, we typically put a reverse proxy (Nginx/Caddy) in front.
