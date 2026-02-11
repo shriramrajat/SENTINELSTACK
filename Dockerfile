@@ -25,7 +25,7 @@ COPY requirements.txt .
 
 # Create wheels for all dependencies
 # keeping them in /app/wheels
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -r requirements.txt
 
 
 # -------------------------------------------------------------------
@@ -51,7 +51,7 @@ COPY --from=builder /app/wheels /wheels
 COPY --from=builder /app/requirements.txt .
 
 # Install dependencies from the wheels
-RUN pip install --no-cache /wheels/*
+RUN pip install --no-cache --no-index --find-links=/wheels -r requirements.txt
 
 # NOW Copy the application code.
 # This is the most frequently changing layer, so it comes last.
