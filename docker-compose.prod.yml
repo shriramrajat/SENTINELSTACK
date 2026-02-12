@@ -79,7 +79,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     ports:
-      - "3000:3000" # Expose Grafana UI
+      - "3001:3000" # Expose Grafana UI (Changed to avoid conflict)
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
