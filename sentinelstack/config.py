@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Security (We will rotate this later)
     SECRET_KEY: str = "unsafe-development-secret-key-change-in-prod"
     ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"
