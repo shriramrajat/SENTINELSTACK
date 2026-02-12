@@ -7,6 +7,13 @@ from starlette.responses import JSONResponse
 from sentinelstack.gateway.context import RequestCtx, set_context, reset_context
 from sentinelstack.rate_limit.service import rate_limiter
 from sentinelstack.logging.service import log_service
+from sentinelstack.monitoring.metrics import (
+    HTTP_REQUESTS_TOTAL,
+    HTTP_REQUEST_DURATION_SECONDS,
+    RATE_LIMIT_HITS,
+    SYSTEM_ERRORS,
+    LOG_QUEUE_SIZE
+)
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -31,13 +38,22 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         status_code = 500
         
         try:
-            # 3. Rate Limit Check
-            if ctx.path not in ["/health", "/docs", "/openapi.json"] and \
+            # 3. Rate Limit Check (Skip health checks/static/metrics)
+            if ctx.path not in ["/health", "/docs", "/openapi.json", "/metrics"] and \
                not ctx.path.startswith(("/stats", "/ai", "/dashboard", "/static")):
+               
                 allowed, headers = await rate_limiter.check_request(ctx)
                 if not allowed:
                     status_code = 429
-                    return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"}, headers=headers)
+                    
+                    # Record Rate Limit Metric
+                    RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
+                    
+                    return JSONResponse(
+                        status_code=429, 
+                        content={"detail": "Rate limit exceeded"}, 
+                        headers=headers
+                    )
 
             # 4. Process Request
             response = await call_next(request)
@@ -46,16 +62,42 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             return response
             
         except Exception as exc:
-            # 5. Capture internal errors for logging
+            # 5. Capture internal errors
             status_code = 500
+            
+            # Record System Error Metric
+            SYSTEM_ERRORS.labels(
+                path=ctx.path, 
+                error_type=type(exc).__name__
+            ).inc()
+            
             raise exc
             
         finally:
-            # 6. Async Logging (Fire and Forget)
-            latency = (time.time() - start_time) * 1000
+            # 6. Metrics & Logging (Always runs)
+            duration = time.time() - start_time
             
-            # Don't log health in production usually, but ok for now
-            if ctx.path != "/health":
+            # Update Metrics
+            HTTP_REQUESTS_TOTAL.labels(
+                method=ctx.method,
+                path=ctx.path, 
+                status_code=status_code
+            ).inc()
+            
+            HTTP_REQUEST_DURATION_SECONDS.labels(
+                method=ctx.method,
+                path=ctx.path
+            ).observe(duration)
+            
+            # Update Log Queue Gauge (Snapshot)
+            # Assuming log_service has a queue; if it's a list, use len()
+            # If using asyncio.Queue: log_service.queue.qsize()
+            if hasattr(log_service, 'queue'):
+                LOG_QUEUE_SIZE.set(log_service.queue.qsize())
+
+            # Async Logging (Fire and Forget)
+            # Don't log health/metrics in production logs to save DB space
+            if ctx.path not in ["/health", "/metrics"]:
                 log_data = {
                     "request_id": ctx.request_id,
                     "timestamp": datetime.datetime.utcnow(),
@@ -64,7 +106,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                     "method": ctx.method,
                     "path": ctx.path,
                     "status_code": status_code,
-                    "latency_ms": latency,
+                    "latency_ms": duration * 1000,
                     "error_flag": status_code >= 400
                 }
                 log_service.log_request(log_data)
