@@ -1,24 +1,48 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Union
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 from sentinelstack.config import settings
 
-# Password Hashing Context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    """
+    Check if the plain password matches the hashed password.
+    Direct bcrypt usage avoids passlib's overhead and bugs.
+    """
+    if not hashed_password:
+        return False
+    # bcrypt.checkpw requires bytes
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'), 
+        hashed_password.encode('utf-8')
+    )
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    """
+    Hash a password using bcrypt.
+    Returns a string for database storage.
+    """
+    # Generate salt and hash
+    # bcrypt.hashpw returns bytes like b'$2b$12$...'
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 def create_access_token(subject: Union[str, Any], role: str, expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=30) # Default 30 mins
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode = {"sub": str(subject), "role": role, "exp": expire}
+    # Minimal JWT payload
+    to_encode = {
+        "sub": str(subject), 
+        "role": role, 
+        "exp": expire,
+        "iat": datetime.now(timezone.utc)
+    }
+    
+    # We use python-jose which handles the encoding details
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
