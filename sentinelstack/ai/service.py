@@ -49,18 +49,18 @@ class AIService:
             )
             total = total_result.scalar() or 0
 
-            # 3. Average Latency (approx)
+            # 3. Average Latency (approx) - FIXED COLUMN MAPPING
             latency_result = await db.execute(
-                select(func.avg(RequestLog.process_time))
+                select(func.avg(RequestLog.latency_ms))
                 .where(RequestLog.timestamp >= cutoff)
             )
             val = latency_result.scalar()
-            latency = float(val) if val else 0.0
+            latency_ms = float(val) if val else 0.0
 
             return {
                 "period_minutes": minutes,
                 "total_requests": total,
-                "avg_latency_ms": round(latency * 1000, 2),
+                "avg_latency_ms": round(latency_ms, 2),
                 "top_errors": formatted_errors
             }
 
