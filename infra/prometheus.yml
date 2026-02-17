@@ -3,8 +3,7 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'sentinelstack_prod'
+  - job_name: 'sentinelstack_local'
     scrape_interval: 5s
     static_configs:
-      - targets: ['sentinel_api:8000'] 
-      # 'sentinel_api' matches the service name and container_name in docker-compose
+      - targets: ['host.docker.internal:8000']
