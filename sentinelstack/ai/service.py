@@ -2,135 +2,103 @@ import datetime
 import json
 from sqlalchemy import select, func, desc
 from sentinelstack.database import AsyncSessionLocal
-from sentinelstack.logging.models import RequestLog
 from sentinelstack.ai.llm import get_llm_provider, LLMProvider
 from sentinelstack.config import settings
 from sentinelstack.cache import redis_client
+from sentinelstack.incidents.models import Incident
+from sentinelstack.aggregation.models import RequestMetric
 
 class AIService:
     def __init__(self):
         # Initialize LLM based on environment
-        # We use a factory pattern to switch between Mock and Real LLM
         api_key = getattr(settings, "OPENAI_API_KEY", "")
         self.llm: LLMProvider = get_llm_provider(
             env=settings.ENV,
             api_key=api_key
         )
 
-    async def get_raw_stats(self, minutes: int = 15) -> dict:
+    async def get_system_status(self) -> dict:
         """
-        Database Layer: Aggregates raw SQL metrics.
-        Returns pure data (Dict). No business logic.
+        Single Source of Truth Check.
+        1. Check specific Incident Table.
+        2. If Incident -> Generate/Fetch Analysis.
+        3. If Healthy -> Return Summary Stats.
         """
-        cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)
-        
         async with AsyncSessionLocal() as db:
-            # 1. Error Counts (Top 5)
-            # Query: SELECT status, path, COUNT(*) FROM logs WHERE error=true ...
-            errors_result = await db.execute(
-                select(RequestLog.status_code, RequestLog.path, func.count(RequestLog.id))
-                .where(RequestLog.timestamp >= cutoff)
-                .where(RequestLog.error_flag == True)
-                .group_by(RequestLog.status_code, RequestLog.path)
-                .order_by(desc(func.count(RequestLog.id)))
-                .limit(5)
+            # 1. Check for Active Incident
+            stmt = select(Incident).where(Incident.status == "active").order_by(desc(Incident.start_time)).limit(1)
+            incident = (await db.execute(stmt)).scalar_one_or_none()
+
+            if not incident:
+                return {
+                    "health": "operational",
+                    "summary": "All systems healthy. No active incidents.",
+                    "details": None
+                }
+
+            # 2. Incident Found - Contextualize
+            # Get metrics from the start of the incident
+            metrics_stmt = (
+                select(RequestMetric)
+                .where(RequestMetric.bucket_time >= incident.start_time)
+                .order_by(desc(RequestMetric.bucket_time))
+                .limit(10) # Last 10 minutes of data
             )
+            metrics = (await db.execute(metrics_stmt)).scalars().all()
             
-            # Format Errors First
-            formatted_errors = [
-                {"code": r[0], "path": r[1], "count": r[2]} 
-                for r in errors_result.all()
-            ]
-
-            # 2. Total Request Volume (for context)
-            total_result = await db.execute(
-                select(func.count(RequestLog.id))
-                .where(RequestLog.timestamp >= cutoff)
-            )
-            total = total_result.scalar() or 0
-
-            # 3. Average Latency (approx) - FIXED COLUMN MAPPING
-            latency_result = await db.execute(
-                select(func.avg(RequestLog.latency_ms))
-                .where(RequestLog.timestamp >= cutoff)
-            )
-            val = latency_result.scalar()
-            latency_ms = float(val) if val else 0.0
-
-            return {
-                "period_minutes": minutes,
-                "total_requests": total,
-                "avg_latency_ms": round(latency_ms, 2),
-                "top_errors": formatted_errors
-            }
-
-    async def analyze_recent_traffic(self, minutes: int = 15) -> dict:
-        """
-        Core Logic:
-        1. Check Cache (Don't query DB/LLM too often)
-        2. Get Raw Stats from DB
-        3. Send to LLM/Mock for Insight Generation
-        """
-        
-        # 1. Cache Check
-        # 5 min TTL to prevent spamming the expensive 'LLM'
-        cache_key = f"ai_insight:{minutes}"
-        try:
+            # 3. Check if Analysis Exists/Fresh
+            # In a real system, we'd store the analysis in the DB to avoid re-generating.
+            # Here we cache it effectively.
+            cache_key = f"incident_analysis:{incident.id}"
             cached = await redis_client.get(cache_key)
             if cached:
-                return json.loads(cached)
-        except Exception:
-            # Redis failure should not break the app
-            pass
+                analysis = json.loads(cached)
+            else:
+                # 4. Generate Fresh Analysis (Expensive)
+                analysis = await self._generate_analysis(incident, metrics)
+                await redis_client.setex(cache_key, 300, json.dumps(analysis))
 
-        # 2. Get Data form DB
-        stats = await self.get_raw_stats(minutes)
+            return {
+                "health": "critical" if incident.severity == "critical" else "degraded",
+                "summary": incident.description,
+                "incident_id": incident.id,
+                "analysis": analysis
+            }
 
-        # 3. Construct Context for AI
+    async def _generate_analysis(self, incident: Incident, metrics: list[RequestMetric]) -> dict:
+        """
+        Private: Asks LLM to explain the incident using aggregated metrics.
+        """
+        # Format Context
+        formatted_metrics = []
+        for m in metrics:
+            formatted_metrics.append({
+                "time": m.bucket_time.isoformat(),
+                "path": m.path,
+                "status": m.status_code,
+                "errors": m.total_errors,
+                "latency": m.avg_latency_ms
+            })
+
         system_prompt = (
-            "You are SentinelAI, an expert Site Reliability Engineer (SRE). "
-            "Analyze the provided JSON metrics from an API Gateway.\n\n"
-            "Your output MUST be a JSON object with these keys:\n"
-            "- summary: A short 1-sentence headline.\n"
-            "- analysis: A detailed paragraph explaining likely root causes.\n"
-            "- action_items: A list of 3 specific technical recommendations.\n"
-            "- severity: One of [critical, high, medium, low, info, healthy].\n"
+            "You are SentinelAI, an automated SRE responder. "
+            "An incident has been detected based on hard rules. "
+            "Explain the root cause based on the metrics provided.\n"
+            "Output JSON with keys: 'explanation', 'affected_components', 'likely_root_cause', 'mitigation_steps'."
         )
         
         context = {
-            "metrics": stats,
-            "timestamp": datetime.datetime.utcnow().isoformat()
+            "incident_desc": incident.description,
+            "start_time": incident.start_time.isoformat(),
+            "recent_metrics": formatted_metrics
         }
 
-        # 4. Generate Insight
         try:
-            insight = await self.llm.generate_insight(system_prompt, context)
-            
-            # Merge raw stats with insight for the frontend
-            final_result = {
-                "ai_analysis": insight,
-                "raw_metrics": stats
-            }
-            
-            # Cache Result
-            try:
-                await redis_client.setex(cache_key, 300, json.dumps(final_result))
-            except Exception:
-                pass 
-                
-            return final_result
-            
+            return await self.llm.generate_insight(system_prompt, context)
         except Exception as e:
-            print(f"AI Service Error: {e}")
-            # Fallback (don't cache failures)
-            return {
-                "ai_analysis": {
-                    "summary": "AI Analysis Failed", 
-                    "severity": "unknown",
-                    "action_items": [],
-                    "analysis": str(e)
-                },
-                "raw_metrics": stats
+             return {
+                "explanation": "AI Analysis Failed",
+                "reason": str(e)
             }
 
 # Global Instance
