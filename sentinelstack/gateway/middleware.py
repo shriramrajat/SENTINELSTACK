@@ -4,6 +4,9 @@ import datetime
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from jose import jwt, JWTError
+
+from sentinelstack.config import settings
 from sentinelstack.gateway.context import RequestCtx, set_context, reset_context
 from sentinelstack.rate_limit.service import rate_limiter
 from sentinelstack.logging.service import log_service
@@ -24,12 +27,29 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "127.0.0.1"
         if "x-forwarded-for" in request.headers:
             client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
-        
-        # 2. Create Context
+            
+        # 2. Attempt Identity Extraction (Optimistic)
+        user_id = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                # Verify signature only (CPU bound, fast)
+                payload = jwt.decode(
+                    token, 
+                    settings.SECRET_KEY, 
+                    algorithms=[settings.ALGORITHM]
+                )
+                user_id = payload.get("sub")
+            except JWTError:
+                # Invalid/Expired token -> Treat as Anonymous
+                pass
+
+        # 3. Create Context
         ctx = RequestCtx(
             request_id=request_id,
             client_ip=client_ip,
-            user_id=None, 
+            user_id=user_id, 
             path=request.url.path,
             method=request.method
         )
@@ -38,7 +58,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         status_code = 500
         
         try:
-            # 3. Rate Limit Check (Skip health checks/static/metrics)
+            # 4. Rate Limit Check (Identity Aware)
+            # Skip health checks/static/metrics
             if ctx.path not in ["/health", "/docs", "/openapi.json", "/metrics"] and \
                not ctx.path.startswith(("/stats", "/ai", "/dashboard", "/static")):
                
@@ -55,14 +76,14 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         headers=headers
                     )
 
-            # 4. Process Request
+            # 5. Process Request
             response = await call_next(request)
             status_code = response.status_code
             response.headers["X-Request-ID"] = request_id
             return response
             
         except Exception as exc:
-            # 5. Capture internal errors
+            # 6. Capture internal errors
             status_code = 500
             
             # Record System Error Metric
@@ -74,7 +95,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             raise exc
             
         finally:
-            # 6. Metrics & Logging (Always runs)
+            # 7. Metrics & Logging (Always runs)
             duration = time.time() - start_time
             
             # Update Metrics
@@ -90,13 +111,10 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             ).observe(duration)
             
             # Update Log Queue Gauge (Snapshot)
-            # Assuming log_service has a queue; if it's a list, use len()
-            # If using asyncio.Queue: log_service.queue.qsize()
             if hasattr(log_service, 'queue'):
                 LOG_QUEUE_SIZE.set(log_service.queue.qsize())
 
             # Async Logging (Fire and Forget)
-            # Don't log health/metrics in production logs to save DB space
             if ctx.path not in ["/health", "/metrics"]:
                 log_data = {
                     "request_id": ctx.request_id,
