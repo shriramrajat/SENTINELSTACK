@@ -1,149 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SentinelStack Dashboard</title>
+    <title>SentinelStack Ops Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            background-color: #0f172a;
-            color: #e2e8f0;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .card {
-            background-color: #1e293b;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-        }
-
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #38bdf8;
-        }
-
-        .stat-label {
-            color: #94a3b8;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-    </style>
 </head>
+<body class="bg-gray-900 text-gray-100 font-mono">
 
-<body class="p-8">
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-white">SentinelStack <span class="text-sky-400">Ops</span></h1>
-                <p class="text-slate-400">Live Traffic & Security Monitoring</p>
-            </div>
-            <div class="flex gap-2">
-                <span class="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium animate-pulse">●
-                    Live</span>
-            </div>
-        </header>
-        <div id="ai-panel"
-            class="mb-8 p-4 rounded-lg bg-slate-800 border-l-4 border-slate-600 hidden transition-all duration-300">
-            <div class="flex items-start gap-4">
-                <div class="text-2xl mt-1">🤖</div>
-                <div>
-                    <h3 class="text-lg font-semibold text-white mb-1">Sentinel AI Insight</h3>
-                    <p id="ai-message" class="text-slate-300">Analyzing traffic patterns...</p>
-                    <div id="ai-details" class="mt-2 text-xs text-slate-500 font-mono"></div>
-                </div>
-            </div>
+    <!-- Header -->
+    <nav class="border-b border-gray-800 p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-500">SentinelStack v1</h1>
+        <div id="status-indicator" class="px-3 py-1 rounded bg-gray-800 text-sm">
+            loading...
         </div>
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="card">
-                <div class="stat-label">Total Requests (1h)</div>
-                <div class="stat-value" id="total-req">0</div>
-            </div>
-            <div class="card">
-                <div class="stat-label">Error Rate</div>
-                <div class="stat-value text-red-400" id="error-rate">0%</div>
-            </div>
-            <div class="card">
-                <div class="stat-label">Avg Latency</div>
-                <div class="stat-value text-emerald-400" id="avg-lat">0<span class="text-lg">ms</span></div>
-            </div>
-            <div class="card">
-                <div class="stat-label">Throughput</div>
-                <div class="stat-value text-indigo-400" id="rpm">0<span class="text-lg">rpm</span></div>
+    </nav>
+
+    <!-- Main Grid -->
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Live Traffic Chart -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700 col-span-2">
+            <h2 class="text-sm uppercase text-gray-400 mb-4">Live Traffic (Last 30m)</h2>
+            <canvas id="trafficChart" height="80"></canvas>
+        </div>
+
+        <!-- Incident Pane -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h2 class="text-sm uppercase text-gray-400 mb-2">Active Incident Analysis</h2>
+            <div id="incident-box" class="text-sm">
+                <p class="text-gray-500 italic">No active incidents detected.</p>
             </div>
         </div>
 
-        <div class="text-center text-slate-500 text-sm mt-12">
-            Auto-refreshing every 5 seconds.
+        <!-- AI Insight -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h2 class="text-sm uppercase text-gray-400 mb-2">AI Root Cause Explanation</h2>
+            <div id="ai-box" class="bg-gray-900 p-3 rounded text-xs leading-relaxed text-gray-300 min-h-[100px]">
+                Waiting for analysis...
+            </div>
         </div>
     </div>
 
+    <!-- Polling Logic -->
     <script>
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Requests',
+                    borderColor: '#3B82F6',
+                    data: []
+                }, {
+                    label: 'Errors',
+                    borderColor: '#EF4444',
+                    data: []
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: { display: false },
+                    y: { beginAtZero: true, grid: { color: '#374151' } }
+                }
+            }
+        });
+
         async function fetchStats() {
+            // 1. Get Status
             try {
-                const response = await fetch('/stats/dashboard?minutes=60');
-                const data = await response.json();
+                const statusRes = await fetch('/stats/status');
+                const status = await statusRes.json();
+                
+                const indicator = document.getElementById('status-indicator');
+                const incBox = document.getElementById('incident-box');
+                const aiBox = document.getElementById('ai-box');
 
-                // Update DOM
-                document.getElementById('total-req').innerText = data.total_requests;
-                document.getElementById('error-rate').innerText = data.error_rate_percent + '%';
-                document.getElementById('avg-lat').innerText = data.avg_latency_ms + 'ms';
-                document.getElementById('rpm').innerText = data.rpm + 'rpm';
+                if (status.health === 'operational') {
+                    indicator.className = "px-3 py-1 rounded bg-green-900 text-green-300";
+                    indicator.innerText = "OPERATIONAL";
+                    incBox.innerHTML = `<p class="text-green-500">All systems normal.</p>`;
+                    aiBox.innerText = "No anomalies to analyze.";
+                } else {
+                    indicator.className = "px-3 py-1 rounded bg-red-900 text-red-300 animate-pulse";
+                    indicator.innerText = status.health.toUpperCase();
+                    
+                    incBox.innerHTML = `
+                        <div class="mb-2 font-bold text-red-400">${status.summary}</div>
+                        <div class="text-xs text-gray-500">Incident ID: ${status.incident_id}</div>
+                    `;
+                    
+                    if (status.analysis) {
+                        aiBox.innerHTML = `
+                            <p class="mb-2"><span class="text-blue-400 font-bold">Explanation:</span> ${status.analysis.explanation || status.analysis.reason}</p>
+                            <p><span class="text-purple-400 font-bold">Mitigation:</span> ${JSON.stringify(status.analysis.mitigation_steps || [])}</p>
+                        `;
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
 
-                // Color coding
-                const errEl = document.getElementById('error-rate');
-                if (data.error_rate_percent > 5) errEl.className = "stat-value text-red-500";
-                else if (data.error_rate_percent > 1) errEl.className = "stat-value text-yellow-500";
-                else errEl.className = "stat-value text-emerald-500";
-
-            } catch (err) {
-                console.error("Failed to fetch stats", err);
+            // 2. Get Metrics
+            try {
+                const metricsRes = await fetch('/stats/metrics?minutes=30');
+                const data = await metricsRes.json();
+                
+                chart.data.labels = data.timeseries.map(d => d.time);
+                chart.data.datasets[0].data = data.timeseries.map(d => d.requests);
+                chart.data.datasets[1].data = data.timeseries.map(d => d.errors);
+                chart.update();
+            } catch (e) {
+                console.error(e);
             }
         }
-        async function fetchAI() {
-            try {
-                const res = await fetch('/ai/insight?minutes=15');
-                const data = await res.json();
 
-                const panel = document.getElementById('ai-panel');
-                const msg = document.getElementById('ai-message');
-                const details = document.getElementById('ai-details');
-                // Reveal panel
-                panel.classList.remove('hidden');
-                // Update Content
-                msg.innerText = data.insight;
-
-                // Styling based on severity
-                panel.className = "mb-8 p-4 rounded-lg border-l-4 transition-all duration-300 ";
-                if (data.severity === 'critical' || data.severity === 'error') {
-                    panel.className += "bg-red-900/20 border-red-500";
-                    msg.className = "text-red-200";
-                } else if (data.severity === 'warning') {
-                    panel.className += "bg-yellow-900/20 border-yellow-500";
-                    msg.className = "text-yellow-200";
-                } else {
-                    panel.className += "bg-emerald-900/20 border-emerald-500";
-                    msg.className = "text-emerald-200";
-                }
-                // Show details if critical
-                if (data.details && data.details.length > 0) {
-                    details.innerText = "Details: " + data.details.join(", ");
-                } else {
-                    details.innerText = "";
-                }
-            } catch (e) { console.error("AI Check failed", e); }
-        }
-        // Initial fetch and interval
-        fetchStats();
-        fetchAI()
+        // Poll every 5s
         setInterval(fetchStats, 5000);
-        setInterval(fetchAI, 10000);
+        fetchStats();
     </script>
 </body>
-
 </html>
