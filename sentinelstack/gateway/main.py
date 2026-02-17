@@ -17,14 +17,21 @@ async def lifespan(app: FastAPI):
     print(f"INFO:    Starting {settings.APP_NAME}")
     
     # Start Log Worker Task
-    task = asyncio.create_task(log_service.worker())
+    task_log = asyncio.create_task(log_service.worker())
+    
+    # Start Aggregation Worker Task
+    from sentinelstack.aggregation.service import aggregation_service
+    task_agg = asyncio.create_task(aggregation_service.worker())
     
     yield
     
     # Shutdown
     print(f"INFO:    Shutting down {settings.APP_NAME}")
     log_service.is_running = False
-    await task 
+    aggregation_service.is_running = False
+    await task_log
+    # We don't await aggregation task because it sleeps for long periods
+    task_agg.cancel() 
 
 app = FastAPI(
     title=settings.APP_NAME,
