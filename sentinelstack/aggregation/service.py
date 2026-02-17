@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sentinelstack.database import AsyncSessionLocal
 from sentinelstack.logging.models import RequestLog
@@ -23,33 +23,14 @@ class AggregationService:
         try:
             # 1. Check if we already aggregated this bucket (Idempotency)
             # In a real distributed system, use Redis Lock here.
-            existing = await session.execute(
-                select(RequestMetric).where(RequestMetric.bucket_time == bucket_start).limit(1)
-            )
+            stmt_check = select(RequestMetric).where(RequestMetric.bucket_time == bucket_start).limit(1)
+            existing = await session.execute(stmt_check)
             if existing.scalar():
-                print(f"INFO:    Metrics for {bucket_start} already exist. Skipping.")
+                # print(f"DEBUG:   Metrics for {bucket_start} already exist. Skipping.")
                 return
 
             # 2. Perform Segregated Aggregation (Group By)
             # We calculate stats per (method, path, status) group
-            stmt = (
-                select(
-                    RequestLog.method,
-                    RequestLog.path,
-                    RequestLog.status_code,
-                    func.count(RequestLog.id).label("count"),
-                    func.sum(case((RequestLog.error_flag == True, 1), else_=0)).label("errors"),
-                    func.avg(RequestLog.latency_ms).label("avg_latency")
-                )
-                .where(RequestLog.timestamp >= bucket_start)
-                .where(RequestLog.timestamp < bucket_end)
-                .group_by(RequestLog.method, RequestLog.path, RequestLog.status_code)
-            )
-            
-            # Need to import case function for conditional sum
-            from sqlalchemy import case
-            
-            # Re-build statement with correct imports in scope
             stmt = (
                 select(
                     RequestLog.method,
@@ -79,7 +60,7 @@ class AggregationService:
                     path=row.path,
                     status_code=row.status_code,
                     total_requests=row.count,
-                    total_errors=row.errors,
+                    total_errors=row.errors or 0, # Handle None from SUM
                     avg_latency_ms=float(row.avg_latency) if row.avg_latency else 0.0,
                     p95_latency_ms=0.0 # Placeholder for advanced calc
                 ))
