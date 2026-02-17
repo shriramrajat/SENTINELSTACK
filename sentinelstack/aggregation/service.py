@@ -68,6 +68,10 @@ class AggregationService:
             session.add_all(metrics_to_insert)
             await session.commit()
             print(f"INFO:    Aggregated {len(metrics_to_insert)} metric groups for {bucket_start}")
+            
+            # 4. Trigger Incident Check
+            from sentinelstack.incidents.service import incident_service
+            await incident_service.check_thresholds(session, bucket_start)
 
         except Exception as e:
             print(f"ERROR:   Aggregation failed: {e}")
