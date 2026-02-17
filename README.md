@@ -7,12 +7,13 @@
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green)
 ![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange)
+![AI](https://img.shields.io/badge/AI-OpenAI%20Powered-purple)
 
 ## 👁️ Overview
 
-**SentinelStack** is a production-oriented API Gateway designed to be the hard outer shell of your application infrastructure. It sits in front of your business logic, providing a unified layer for identity management, traffic control, and intelligent observability.
+**SentinelStack** is a production-oriented API Gateway designed to be the hard outer shell of your application infrastructure. It sits in front of your business logic, providing a unified layer for identity management, traffic control, and **AI-driven** intelligent observability.
 
-Unlike generic reverse proxies, SentinelStack integrates **deterministic rate limiting**, **stateless authentication**, and **real-time metrics** directly into the request lifecycle.
+Unlike generic reverse proxies, SentinelStack integrates **deterministic rate limiting**, **stateless authentication**, and **automated incident analysis** directly into the request lifecycle.
 
 ## 🏗️ Architecture
 
@@ -21,32 +22,40 @@ SentinelStack follows a Gateway-First design philosophy where cross-cutting conc
 ```mermaid
 graph TD
     Client -->|"HTTP Request"| Gateway["SentinelStack Gateway"]
-    Gateway -->|"1. Metrics"| Prom["Prometheus Exporter"]
+    Gateway -->|"1. Async Log"| LogQueue["Log Queue"]
     Gateway -->|"2. Control"| RateLimit["Redis Token Bucket"]
     Gateway -->|"3. Auth"| Auth["JWT Validation"]
     Gateway -->|"4. Business"| App["Business Logic / APIs"]
     
-    Prom -.->|"Scrape (15s)"| Prometheus["Prometheus Server"]
-    Prometheus -.->|"Query"| Grafana["Grafana Dashboard"]
+    LogQueue -.->|"Batch Insert"| DB[(PostgreSQL)]
+    DB -.->|"Aggregator (1min)"| Metrics["Aggregated Metrics"]
+    Metrics -.->|"Check Thresholds"| Incidents["Incident Manager"]
+    Incidents -.->|"Active Incident"| AI["AI Service (OpenAI)"]
+    
+    Gateway -->|"Expose"| Prom["Prometheus Exporter"]
+    Prom -.->|"Scrape"| Prometheus["Prometheus Server"]
 ```
 
 ## 🚀 Key Features
 
--   **🛡️ Robust Identity & Auth**: Secure, stateless authentication using JWT and Bcrypt (No passlib dependency).
+-   **🤖 AI-Powered Incident Response**: Automatically detects anomalies and uses LLMs (OpenAI) to generate root cause analysis and mitigation steps.
+-   **🛡️ Robust Identity & Auth**: Secure, stateless authentication using JWT and Bcrypt.
 -   **⚡ Deterministic Rate Limiting**: Redis-backed Token Bucket algorithm ensures precise traffic control per user/IP.
+-   **📊 Real-time Aggregation**: Background workers process raw logs into 1-minute metric buckets for high-performance querying.
+-   **🚀 Asynchronous Architecture**: Non-blocking request logging ensures zero impact on gateway latency.
 -   **👁️ Monitoring Stack**: 
+    -   **Built-in Dashboard**: Real-time status at `/dashboard`.
     -   **Prometheus**: Scrapes `/metrics` for throughput, latency, and error rates.
     -   **Grafana**: Visualizes real-time performance on port `3001`.
 -   **✅ CI/CD Ready**: GitHub Actions pipeline for linting, testing, and Docker build verification.
--   **🧪 Integration Tested**: Full test suite covering Signup -> Login -> Rate Limiting flows.
 
 ## 🛠️ Technology Stack
 
 -   **Core Framework**: Python 3.10+, FastAPI, Pydantic
 -   **Database**: PostgreSQL (AsyncPG), SQLAlchemy 2.0
 -   **Caching & Throttling**: Redis (AsyncIO) + Lua Scripts
--   **Monitoring**: Prometheus (Client & Server), Grafana
--   **Testing**: Pytest, AsyncIO, HTTPX
+-   **AI & Logic**: OpenAI API, Custom Heuristics
+-   **Monitoring**: Prometheus, Grafana
 -   **Infrastructure**: Docker & Docker Compose
 
 ## ⚡ Getting Started (Local Development)
@@ -54,6 +63,7 @@ graph TD
 ### Prerequisites
 -   Docker & Docker Compose
 -   Python 3.10+
+-   OpenAI API Key (Optional, for AI features)
 
 ### Installation
 
@@ -63,24 +73,30 @@ graph TD
     cd SentinelStack
     ```
 
-2.  **Run with Docker (Best for Demo)**
-    This spins up Postgres, Redis, Prometheus, Grafana, and the API.
+2.  **Configure Environment**
+    Create `.env.prod` and add your secrets:
+    ```properties
+    OPENAI_API_KEY=sk-...
+    ```
+
+3.  **Run with Docker**
     ```bash
     docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
     ```
 
-3.  **Access the Services**
+4.  **Access the Services**
     -   **API**: `http://localhost:8000`
+    -   **Dashboard**: `http://localhost:8000/dashboard`
     -   **Docs**: `http://localhost:8000/docs`
     -   **Grafana**: `http://localhost:3001` (User: `admin` / `admin`)
     -   **Prometheus**: `http://localhost:9090`
 
 ## 🧪 Running Tests
 
-To run the integration test suite (requires local env or test containers):
+To run the integration test suite:
 
 ```bash
-# Install test dependencies
+# Install dependencies
 pip install -r requirements.txt
 
 # Run tests
@@ -97,9 +113,10 @@ pytest
     ```
 
 ## 🔮 Roadmap (v2)
+-   [x] Integration with LLMs (OpenAI) for deep log analysis
 -   [ ] Distributed Rate Limiting (Redis Cluster)
 -   [ ] User-Agent / Bot Detection
--   [ ] Integration with LLMs (OpenAI/Gemini) for deep log analysis
+-   [ ] Webhook Alerts for Incidents
 
 ## 📄 License
 Proprietary / Confidential. All rights reserved.
