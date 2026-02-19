@@ -70,9 +70,8 @@ jobs:
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key
       run: |
-        # Run pytest. If no tests exist yet, this will just collect 0 items and pass/fail depending on config
-        # We will add tests in Task 3.
-        pytest || echo "No tests collected yet."
+        # Run pytest. 
+        pytest
 
   # JOB 2: Build Verification
   docker-build:
@@ -83,3 +82,26 @@ jobs:
       
       - name: Build Docker Image
         run: docker build . --file Dockerfile --tag sentinelstack:latest
+
+  # JOB 3: Performance Benchmark (NEW)
+  benchmark:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run k6 local benchmark
+        # We run the stack and then hit it with k6
+        run: |
+          # 1. Start App in Background
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # 2. Give it time to boot
+          sleep 10
+          
+          # 3. Running k6 (1k RPM test)
+          # Using network="host" so k6 can see the app on localhost if Linux
+          # But in GitHub Actions (Linux), docker containers might need a bridge network
+          # Safer approach: run k6 inside the same compose network or hitting the exposed port
+          
+          docker run --network host -v "${PWD}:/src" -w /src grafana/k6 run benchmarks/k6_benchmark_script.js --env TARGET_RPM=1000 --env BASE_URL=http://localhost:8000
