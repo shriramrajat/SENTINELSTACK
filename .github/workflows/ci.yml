@@ -62,13 +62,9 @@ jobs:
 # ... (previous content)
     - name: Run Tests
       env:
-        # Override config for testing environment
         ENV: test
-        POSTGRES_USER: test_user
-        POSTGRES_PASSWORD: test_password
-        POSTGRES_DB: sentinel_test
-        POSTGRES_HOST: localhost
-        POSTGRES_PORT: 5432  # <--- FORCE PORT 5432
+        # We must set the full DATABASE_URL because config.py does not auto-construct it from parts
+        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/sentinel_test
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key
       run: |
