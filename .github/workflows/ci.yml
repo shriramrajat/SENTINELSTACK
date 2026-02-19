@@ -59,6 +59,7 @@ jobs:
         # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+# ... (previous content)
     - name: Run Tests
       env:
         # Override config for testing environment
@@ -67,11 +68,13 @@ jobs:
         POSTGRES_PASSWORD: test_password
         POSTGRES_DB: sentinel_test
         POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432  # <--- FORCE PORT 5432
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key
       run: |
         # Run pytest. 
         pytest
+# ... (maintain rest of file)
 
   # JOB 2: Build Verification
   docker-build:
