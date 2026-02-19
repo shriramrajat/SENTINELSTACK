@@ -68,9 +68,11 @@ jobs:
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key
       run: |
+        # Run migrations to create tables
+        alembic upgrade head
         # Run pytest. 
         pytest
-# ... (maintain rest of file)
+
 
   # JOB 2: Build Verification
   docker-build:
