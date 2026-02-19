@@ -2,6 +2,18 @@
 
 > **A High-Performance API Gateway Infrastructure for Control, Security, and Observability.**
 
+### 🔴 **[Live Deployment](YOUR_DEPLOYMENT_URL_HERE)**
+
+| **Live Dashboard** | **Grafana Metrics** |
+|:---:|:---:|
+| ![Dashboard](docs/images/dashboard.jpg) | ![Grafana](docs/images/Grafna.jpg) |
+
+### 🏗️ Architecture
+![Architecture](docs/images/architecture.png)
+<!-- User Note: Please upload your architecture diagram as docs/images/architecture.png -->
+
+---
+
 ![Status](https://img.shields.io/badge/Status-Alpha%20v1-green)
 ![CI Pipeline](https://img.shields.io/badge/Build-Passing-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
