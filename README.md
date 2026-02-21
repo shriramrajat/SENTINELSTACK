@@ -124,11 +124,6 @@ pytest
     docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
     ```
 
-## 🔮 Roadmap (v2)
--   [x] Integration with LLMs (OpenAI) for deep log analysis
--   [ ] Distributed Rate Limiting (Redis Cluster)
--   [ ] User-Agent / Bot Detection
--   [ ] Webhook Alerts for Incidents
 
 ## 📄 License
 Proprietary / Confidential. All rights reserved.
