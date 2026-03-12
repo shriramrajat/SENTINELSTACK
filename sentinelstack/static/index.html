@@ -1,50 +1,181 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SentinelStack Ops Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SentinelStack Operations Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#256af4",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#0B0E14",
+                        "panel-bg": "#151A23",
+                        "panel-border": "#212836",
+                        "neon-green": "#00ff9d",
+                        "neon-red": "#ff3366",
+                        "terminal-bg": "#1e1b4b"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
 </head>
-<body class="bg-gray-900 text-gray-100 font-mono">
-
-    <!-- Header -->
-    <nav class="border-b border-gray-800 p-4 flex justify-between items-center">
-        <h1 class="text-xl font-bold text-blue-500">SentinelStack v1</h1>
-        <div id="status-indicator" class="px-3 py-1 rounded bg-gray-800 text-sm">
-            loading...
-        </div>
-    </nav>
-
-    <!-- Main Grid -->
-    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Live Traffic Chart -->
-        <div class="bg-gray-800 p-4 rounded border border-gray-700 col-span-2">
-            <h2 class="text-sm uppercase text-gray-400 mb-4">Live Traffic (Last 30m)</h2>
-            <canvas id="trafficChart" height="80"></canvas>
-        </div>
-
-        <!-- Incident Pane -->
-        <div class="bg-gray-800 p-4 rounded border border-gray-700">
-            <h2 class="text-sm uppercase text-gray-400 mb-2">Active Incident Analysis</h2>
-            <div id="incident-box" class="text-sm">
-                <p class="text-gray-500 italic">No active incidents detected.</p>
-            </div>
-        </div>
-
-        <!-- AI Insight -->
-        <div class="bg-gray-800 p-4 rounded border border-gray-700">
-            <h2 class="text-sm uppercase text-gray-400 mb-2">AI Root Cause Explanation</h2>
-            <div id="ai-box" class="bg-gray-900 p-3 rounded text-xs leading-relaxed text-gray-300 min-h-[100px]">
-                Waiting for analysis...
-            </div>
-        </div>
-    </div>
-
-    <!-- Polling Logic -->
-    <script>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-panel-border bg-panel-bg/80 backdrop-blur-md px-10 py-4 sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<div class="size-6 text-primary">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 18.4228L42 11.475V34.3663C42 34.7796 41.7457 35.1504 41.3601 35.2992L24 42V18.4228Z" fill="currentColor" fill-rule="evenodd"></path>
+<path clip-rule="evenodd" d="M24 8.18819L33.4123 11.574L24 15.2071L14.5877 11.574L24 8.18819ZM9 15.8487L21 20.4805V37.6263L9 32.9945V15.8487ZM27 37.6263V20.4805L39 15.8487V32.9945L27 37.6263ZM25.354 2.29885C24.4788 1.98402 23.5212 1.98402 22.646 2.29885L4.98454 8.65208C3.7939 9.08038 3 10.2097 3 11.475V34.3663C3 36.0196 4.01719 37.5026 5.55962 38.098L22.9197 44.7987C23.6149 45.0671 24.3851 45.0671 25.0803 44.7987L42.4404 38.098C43.9828 37.5026 45 36.0196 45 34.3663V11.475C45 10.2097 44.2061 9.08038 43.0155 8.65208L25.354 2.29885Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold leading-tight tracking-[-0.015em]">SentinelStack v1</h2>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-primary text-sm font-medium leading-normal border-b-2 border-primary pb-1" href="#">Dashboard</a>
+<a class="text-slate-400 hover:text-slate-200 transition-colors text-sm font-medium leading-normal" href="#">Gateways</a>
+<a class="text-slate-400 hover:text-slate-200 transition-colors text-sm font-medium leading-normal" href="#">Security</a>
+<a class="text-slate-400 hover:text-slate-200 transition-colors text-sm font-medium leading-normal" href="#">Analytics</a>
+</nav>
+<div class="flex items-center gap-4 border-l border-panel-border pl-8">
+<div id="status-container" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-green/10 border border-neon-green/30">
+<div class="w-2 h-2 rounded-full bg-neon-green shadow-[0_0_8px_#00ff9d]"></div>
+<span id="status-indicator" class="text-neon-green text-xs font-bold uppercase tracking-wider">Operational</span>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-panel-border" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDw979pwirkrv6taDfHqi0HpgwiWvHa3sqPPK-05cNXfvYMa52zLNBW03e-MR7G03Psilg-T1WqWy9NJRP63ALsLeHVIrY30W64rnJorR8cgyphdNOBe02RSrZKoJ9YgJQOm9Y7SfSPfTLv99B5bhXyR3LskwAvDvMN6nlQwknOUQvgsniUCxgfuTF2EoFuBYY9nJmB5ViXFgj-5FoGzaPI7J68_9tjE14NLrwK-vq4szMEg5rxruXkkQUIAzEqLTm6uEgB5Lir-d0");'></div>
+</div>
+</div>
+</header>
+<main class="flex-1 px-4 sm:px-8 lg:px-12 py-8 max-w-7xl mx-auto w-full flex flex-col gap-6">
+<!-- Hero Section: Traffic Chart -->
+<section class="rounded-xl bg-panel-bg border border-panel-border p-6 shadow-lg shadow-black/20 flex flex-col gap-6 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none"></div>
+<div class="flex justify-between items-start z-10">
+<div>
+<h3 class="text-lg font-semibold text-slate-300">Live Traffic</h3>
+<div class="flex items-baseline gap-3 mt-1">
+<span id="live-requests" class="text-4xl font-bold tracking-tight">0</span>
+<span class="text-slate-400 text-sm">req/sec</span>
+</div>
+</div>
+<div class="flex gap-2 bg-background-dark rounded-lg p-1 border border-panel-border">
+<button class="px-3 py-1 text-xs font-medium rounded bg-panel-border text-slate-200">30m</button>
+<button class="px-3 py-1 text-xs font-medium rounded hover:bg-panel-border/50 text-slate-400">1h</button>
+<button class="px-3 py-1 text-xs font-medium rounded hover:bg-panel-border/50 text-slate-400">24h</button>
+</div>
+</div>
+<div class="relative h-[250px] w-full z-10 flex flex-col justify-end pb-6 pt-4 border-b border-panel-border/50">
+    <canvas id="trafficChart" style="width:100%; height:100%"></canvas>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Active Incident Analysis -->
+<section class="rounded-xl bg-panel-bg border border-panel-border p-6 flex flex-col gap-6 relative overflow-hidden">
+<div class="flex items-center gap-3 border-b border-panel-border pb-4">
+<span class="material-symbols-outlined text-slate-400">gpp_good</span>
+<h3 class="text-lg font-semibold">Active Incident Analysis</h3>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center py-6 text-center">
+<div class="size-20 rounded-full bg-neon-green/10 flex items-center justify-center mb-4 border border-neon-green/20 shadow-[0_0_30px_rgba(0,255,157,0.1)]">
+<span class="material-symbols-outlined text-5xl text-neon-green">check_circle</span>
+</div>
+<div id="incident-box">
+<h4 class="text-xl font-bold text-slate-100 mb-2">All Systems Clear</h4>
+<p class="text-sm text-slate-400 max-w-sm">No active anomalies detected across the gateway network. Operating at optimal parameters.</p>
+</div>
+</div>
+<div class="bg-background-dark/50 rounded-lg p-4 border border-panel-border/50">
+<h5 class="text-xs font-semibold uppercase text-slate-500 mb-3 tracking-wider">Recently Resolved Events</h5>
+<ul class="space-y-3">
+<li class="flex items-start gap-3">
+<div class="mt-0.5 size-2 rounded-full bg-primary/50 border border-primary"></div>
+<div>
+<p class="text-sm text-slate-300">Latency spike detected in EU-West-1</p>
+<p class="text-xs text-slate-500 font-mono mt-1">12 mins ago • Auto-scaled nodes</p>
+</div>
+</li>
+<li class="flex items-start gap-3">
+<div class="mt-0.5 size-2 rounded-full bg-slate-500/50 border border-slate-500"></div>
+<div>
+<p class="text-sm text-slate-300">Rate limit triggered for API key XYZ...</p>
+<p class="text-xs text-slate-500 font-mono mt-1">28 mins ago • Policy enforced</p>
+</div>
+</li>
+</ul>
+</div>
+<button class="mt-2 w-full py-2.5 rounded-lg border border-panel-border bg-panel-border/30 hover:bg-panel-border/50 text-sm font-medium transition-colors text-slate-300 flex justify-center items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                            View Incident History
+                        </button>
+</section>
+<!-- AI Root Cause Explanation -->
+<section class="rounded-xl bg-panel-bg border border-panel-border p-6 flex flex-col gap-6">
+<div class="flex items-center justify-between border-b border-panel-border pb-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h3 class="text-lg font-semibold">AI Root Cause Analysis</h3>
+</div>
+<span class="flex items-center gap-2 text-xs font-mono text-slate-400 bg-background-dark px-2 py-1 rounded">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                                Model: Sentin-AI-v4
+                            </span>
+</div>
+<div class="flex-1 rounded-lg bg-terminal-bg border border-indigo-900/50 p-4 font-mono text-sm relative overflow-hidden shadow-inner flex flex-col">
+<div class="flex items-center gap-2 mb-4 border-b border-indigo-900/30 pb-2">
+<div class="size-3 rounded-full bg-red-500/80"></div>
+<div class="size-3 rounded-full bg-yellow-500/80"></div>
+<div class="size-3 rounded-full bg-green-500/80"></div>
+<span class="text-indigo-300/50 text-xs ml-2">sentinel-core ~ zsh</span>
+</div>
+<div class="flex-1 space-y-2 text-indigo-200">
+<div class="flex gap-2 text-slate-400">
+<span class="text-primary">root@sentinel:~$</span>
+<span>tail -f /var/log/ai_analysis.log</span>
+</div>
+<div id="ai-box" class="text-indigo-300 opacity-70">
+                                    [SYS] Initializing Sentinel AI Diagnostic Engine... OK<br/>
+                                    [SYS] Loading current network topology... OK<br/>
+                                    [SYS] Analyzing real-time telemetry stream...
+                                </div>
+<div class="mt-4 pt-4 border-t border-indigo-900/30">
+<span class="text-neon-green">STATUS: MONITORING</span>
+<div class="flex items-center gap-2 mt-2">
+<span>Terminal Interface: Waiting for anomalies</span>
+<span class="inline-block w-2 h-4 bg-indigo-400 animate-pulse"></span>
+</div>
+</div>
+</div>
+<div class="absolute bottom-0 right-0 p-2 opacity-10">
+<span class="material-symbols-outlined text-6xl">memory</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary text-sm font-medium transition-colors flex justify-center items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">search</span>
+                            Analyze Past Events
+                        </button>
+</section>
+</div>
+</main>
+</div>
+</div>
+</div>
+<script>
         const ctx = document.getElementById('trafficChart').getContext('2d');
         const chart = new Chart(ctx, {
             type: 'line',
@@ -52,52 +183,72 @@
                 labels: [],
                 datasets: [{
                     label: 'Total Requests',
-                    borderColor: '#3B82F6',
+                    borderColor: '#256af4',
+                    backgroundColor: 'rgba(37, 106, 244, 0.1)',
+                    fill: true,
+                    tension: 0.4,
                     data: []
                 }, {
                     label: 'Errors',
-                    borderColor: '#EF4444',
+                    borderColor: '#ff3366',
+                    backgroundColor: 'transparent',
+                    tension: 0.4,
                     data: []
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 animation: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#94a3b8' }
+                    }
+                },
                 scales: {
                     x: { display: false },
-                    y: { beginAtZero: true, grid: { color: '#374151' } }
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: '#212836' },
+                        ticks: { color: '#64748b' }
+                    }
                 }
             }
         });
 
         async function fetchStats() {
-            // 1. Get Status
             try {
                 const statusRes = await fetch('/stats/status');
                 const status = await statusRes.json();
                 
+                const statusContainer = document.getElementById('status-container');
                 const indicator = document.getElementById('status-indicator');
                 const incBox = document.getElementById('incident-box');
                 const aiBox = document.getElementById('ai-box');
 
                 if (status.health === 'operational') {
-                    indicator.className = "px-3 py-1 rounded bg-green-900 text-green-300";
+                    statusContainer.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-green/10 border border-neon-green/30";
+                    indicator.className = "text-neon-green text-xs font-bold uppercase tracking-wider";
                     indicator.innerText = "OPERATIONAL";
-                    incBox.innerHTML = `<p class="text-green-500">All systems normal.</p>`;
-                    aiBox.innerText = "No anomalies to analyze.";
+                    incBox.innerHTML = `
+<h4 class="text-xl font-bold text-slate-100 mb-2">All Systems Clear</h4>
+<p class="text-sm text-slate-400 max-w-sm">No active anomalies detected across the gateway network. Operating at optimal parameters.</p>
+                    `;
+                    aiBox.innerHTML = `[SYS] Monitoring... No anomalies.`;
                 } else {
-                    indicator.className = "px-3 py-1 rounded bg-red-900 text-red-300 animate-pulse";
+                    statusContainer.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-red/10 border border-neon-red/30 animate-pulse";
+                    indicator.className = "text-neon-red text-xs font-bold uppercase tracking-wider";
                     indicator.innerText = status.health.toUpperCase();
                     
                     incBox.innerHTML = `
-                        <div class="mb-2 font-bold text-red-400">${status.summary}</div>
-                        <div class="text-xs text-gray-500">Incident ID: ${status.incident_id}</div>
+                        <h4 class="text-xl font-bold text-neon-red mb-2">${status.summary}</h4>
+                        <div class="text-xs text-slate-400 font-mono">Incident ID: ${status.incident_id}</div>
                     `;
                     
                     if (status.analysis) {
                         aiBox.innerHTML = `
-                            <p class="mb-2"><span class="text-blue-400 font-bold">Explanation:</span> ${status.analysis.explanation || status.analysis.reason}</p>
-                            <p><span class="text-purple-400 font-bold">Mitigation:</span> ${JSON.stringify(status.analysis.mitigation_steps || [])}</p>
+                            <p class="mb-2"><span class="text-primary font-bold">Explanation:</span> ${status.analysis.explanation || status.analysis.reason}</p>
+                            <p><span class="text-indigo-400 font-bold">Mitigation:</span> ${JSON.stringify(status.analysis.mitigation_steps || [])}</p>
                         `;
                     }
                 }
@@ -105,7 +256,6 @@
                 console.error(e);
             }
 
-            // 2. Get Metrics
             try {
                 const metricsRes = await fetch('/stats/metrics?minutes=30');
                 const data = await metricsRes.json();
@@ -114,14 +264,20 @@
                 chart.data.datasets[0].data = data.timeseries.map(d => d.requests);
                 chart.data.datasets[1].data = data.timeseries.map(d => d.errors);
                 chart.update();
+
+                if (data.timeseries.length > 0) {
+                    const lastReq = data.timeseries[data.timeseries.length - 1].requests;
+                    const reqElem = document.getElementById('live-requests');
+                    if (reqElem) {
+                        reqElem.innerText = lastReq.toLocaleString();
+                    }
+                }
             } catch (e) {
                 console.error(e);
             }
         }
 
-        // Poll every 5s
         setInterval(fetchStats, 5000);
         fetchStats();
     </script>
-</body>
-</html>
+</body></html>

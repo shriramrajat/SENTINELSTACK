@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentinelStack Ops Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-mono">
+
+    <!-- Header -->
+    <nav class="border-b border-gray-800 p-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-blue-500">SentinelStack v1</h1>
+        <div id="status-indicator" class="px-3 py-1 rounded bg-gray-800 text-sm">
+            loading...
+        </div>
+    </nav>
+
+    <!-- Main Grid -->
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Live Traffic Chart -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700 col-span-2">
+            <h2 class="text-sm uppercase text-gray-400 mb-4">Live Traffic (Last 30m)</h2>
+            <canvas id="trafficChart" height="80"></canvas>
+        </div>
+
+        <!-- Incident Pane -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h2 class="text-sm uppercase text-gray-400 mb-2">Active Incident Analysis</h2>
+            <div id="incident-box" class="text-sm">
+                <p class="text-gray-500 italic">No active incidents detected.</p>
+            </div>
+        </div>
+
+        <!-- AI Insight -->
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h2 class="text-sm uppercase text-gray-400 mb-2">AI Root Cause Explanation</h2>
+            <div id="ai-box" class="bg-gray-900 p-3 rounded text-xs leading-relaxed text-gray-300 min-h-[100px]">
+                Waiting for analysis...
+            </div>
+        </div>
+    </div>
+
+    <!-- Polling Logic -->
+    <script>
+        const ctx = document.getElementById('trafficChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Requests',
+                    borderColor: '#3B82F6',
+                    data: []
+                }, {
+                    label: 'Errors',
+                    borderColor: '#EF4444',
+                    data: []
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: false,
+                scales: {
+                    x: { display: false },
+                    y: { beginAtZero: true, grid: { color: '#374151' } }
+                }
+            }
+        });
+
+        async function fetchStats() {
+            // 1. Get Status
+            try {
+                const statusRes = await fetch('/stats/status');
+                const status = await statusRes.json();
+                
+                const indicator = document.getElementById('status-indicator');
+                const incBox = document.getElementById('incident-box');
+                const aiBox = document.getElementById('ai-box');
+
+                if (status.health === 'operational') {
+                    indicator.className = "px-3 py-1 rounded bg-green-900 text-green-300";
+                    indicator.innerText = "OPERATIONAL";
+                    incBox.innerHTML = `<p class="text-green-500">All systems normal.</p>`;
+                    aiBox.innerText = "No anomalies to analyze.";
+                } else {
+                    indicator.className = "px-3 py-1 rounded bg-red-900 text-red-300 animate-pulse";
+                    indicator.innerText = status.health.toUpperCase();
+                    
+                    incBox.innerHTML = `
+                        <div class="mb-2 font-bold text-red-400">${status.summary}</div>
+                        <div class="text-xs text-gray-500">Incident ID: ${status.incident_id}</div>
+                    `;
+                    
+                    if (status.analysis) {
+                        aiBox.innerHTML = `
+                            <p class="mb-2"><span class="text-blue-400 font-bold">Explanation:</span> ${status.analysis.explanation || status.analysis.reason}</p>
+                            <p><span class="text-purple-400 font-bold">Mitigation:</span> ${JSON.stringify(status.analysis.mitigation_steps || [])}</p>
+                        `;
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
+            // 2. Get Metrics
+            try {
+                const metricsRes = await fetch('/stats/metrics?minutes=30');
+                const data = await metricsRes.json();
+                
+                chart.data.labels = data.timeseries.map(d => d.time);
+                chart.data.datasets[0].data = data.timeseries.map(d => d.requests);
+                chart.data.datasets[1].data = data.timeseries.map(d => d.errors);
+                chart.update();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Poll every 5s
+        setInterval(fetchStats, 5000);
+        fetchStats();
+    </script>
+</body>
+</html>
