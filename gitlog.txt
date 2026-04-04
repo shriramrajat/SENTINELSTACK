@@ -1,0 +1,10 @@
+ 36bcbf49dc8b42b5ac5af4c2d7ba6be4f945008b refined ui components on main dashboard
+ a30bd7fff0ceb2cc883768f2894d3e9949342ba9 docs: Remove the outdated Roadmap (v2) section from README.
+ 8315c5fe651bd9748a302a91675382287260f72f ci: run migrations before tests
+ bc47d6016ffe52110e9751b823f3ceb0abc3ba9d ci: fix database url for tests
+ 6305d5b1eaeb8c3e3f7c2a0c359c73a399056ec9 feat: Add GitHub Actions CI pipeline for linting, testing, Docker image build, and k6 performance benchmarking.
+ 3a7dd308d6522fc1645606af34b520a4ae7c1ad9 ci: add automated benchmarks to pipeline
+ 87a572317d8c1112d09adf4d3d52646c53fa1614 add engineering case study
+ adfe62ac9fdde4048af40f31f73c0e6dacf61d7e docs: Add initial benchmark report detailing load and rate limit test results.
+ e78d37b2d67b7f3edfa829dc3c766aedfa2132df feat: add k6 benchmarking script and report template
+ d6a713946e4104886b070a7caf0518f870d91bf2 	modified:   docs/images/architecture.png

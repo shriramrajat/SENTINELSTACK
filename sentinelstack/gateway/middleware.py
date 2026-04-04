@@ -1,6 +1,7 @@
 import uuid
 import time
 import datetime
+from collections import defaultdict
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -17,6 +18,23 @@ from sentinelstack.monitoring.metrics import (
     SYSTEM_ERRORS,
     LOG_QUEUE_SIZE
 )
+FALLBACK_RATES = defaultdict(lambda: {"tokens": 10, "last_refill": time.time()})
+def check_emergency_limit(ip: str) -> bool:
+    now = time.time()
+    state = FALLBACK_RATES[ip]
+    
+    # Refill tokens (10 per 60 seconds)
+    delta = max(0, now - state["last_refill"])
+    tokens = min(10.0, state["tokens"] + (delta * (10.0 / 60.0)))
+    
+    if tokens >= 1.0:
+        state["tokens"] = tokens - 1.0
+        state["last_refill"] = now
+        return True # Allowed
+        
+    state["tokens"] = tokens
+    state["last_refill"] = now
+    return False # Blocked
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -63,18 +81,30 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             if ctx.path not in ["/health", "/docs", "/openapi.json", "/metrics"] and \
                not ctx.path.startswith(("/stats", "/ai", "/dashboard", "/static")):
                
-                allowed, headers = await rate_limiter.check_request(ctx)
-                if not allowed:
-                    status_code = 429
+                # STEP 8 FIX: Fail-open if Redis crashes
+                try:
+                    allowed, headers = await rate_limiter.check_request(ctx)
+                    if not allowed:
+                        status_code = 429
+                        
+                        # Record Rate Limit Metric
+                        RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
+                        
+                        return JSONResponse(
+                            status_code=429, 
+                            content={"detail": "Rate limit exceeded"}, 
+                            headers=headers
+                        )
+                except Exception as redis_error:
+                    # Redis failed. Use emergency in-memory rate limiter!
                     
-                    # Record Rate Limit Metric
-                    RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
-                    
-                    return JSONResponse(
-                        status_code=429, 
-                        content={"detail": "Rate limit exceeded"}, 
-                        headers=headers
-                    )
+                    if not check_emergency_limit(ctx.client_ip):
+                        RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
+                        return JSONResponse(
+                            status_code=429, 
+                            content={"detail": "Emergency Rate limit exceeded. Service degraded."}, 
+                            headers={"X-RateLimit-Fallback": "True"}
+                        )
 
             # 5. Process Request
             response = await call_next(request)
