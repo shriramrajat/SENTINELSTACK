@@ -95,7 +95,7 @@ jobs:
         # We run the stack and then hit it with k6
         run: |
           # 1. Start App in Background
-          docker-compose -f docker-compose.prod.yml up -d
+          docker compose -f docker-compose.prod.yml up -d
           
           # 2. Give it time to boot
           sleep 10
