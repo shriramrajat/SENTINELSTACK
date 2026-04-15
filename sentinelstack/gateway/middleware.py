@@ -47,6 +47,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             client_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
             
         # 2. Attempt Identity Extraction (Optimistic)
+        _auth_start = time.time()
         user_id = None
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
@@ -62,6 +63,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             except JWTError:
                 # Invalid/Expired token -> Treat as Anonymous
                 pass
+        _auth_ms = (time.time() - _auth_start) * 1000
+        print(f"[TIMING] auth = {_auth_ms:.2f} ms")
 
         # 3. Create Context
         ctx = RequestCtx(
@@ -78,6 +81,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         try:
             # 4. Rate Limit Check (Identity Aware)
             # Skip health checks/static/metrics
+            _rl_start = time.time()
             if ctx.path not in ["/health", "/docs", "/openapi.json", "/metrics"] and \
                not ctx.path.startswith(("/stats", "/ai", "/dashboard", "/static")):
                
@@ -89,6 +93,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                         
                         # Record Rate Limit Metric
                         RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
+                        print(f"[TIMING] rate limiter = {(time.time() - _rl_start) * 1000:.2f} ms")
                         
                         return JSONResponse(
                             status_code=429, 
@@ -100,11 +105,13 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                     
                     if not check_emergency_limit(ctx.client_ip):
                         RATE_LIMIT_HITS.labels(path=ctx.path, client_ip=ctx.client_ip).inc()
+                        print(f"[TIMING] rate limiter = {(time.time() - _rl_start) * 1000:.2f} ms (fallback)")
                         return JSONResponse(
                             status_code=429, 
                             content={"detail": "Emergency Rate limit exceeded. Service degraded."}, 
                             headers={"X-RateLimit-Fallback": "True"}
                         )
+            print(f"[TIMING] rate limiter = {(time.time() - _rl_start) * 1000:.2f} ms")
 
             # 5. Process Request
             response = await call_next(request)
@@ -146,6 +153,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
             # Async Logging (Fire and Forget)
             if ctx.path not in ["/health", "/metrics"]:
+                _log_start = time.time()
                 log_data = {
                     "request_id": ctx.request_id,
                     "timestamp": datetime.datetime.utcnow(),
@@ -158,5 +166,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                     "error_flag": status_code >= 400
                 }
                 log_service.log_request(log_data)
+                print(f"[TIMING] logging = {(time.time() - _log_start) * 1000:.2f} ms")
+
+            print(f"[TIMING] --- Breakdown: auth={_auth_ms:.2f}ms | total={duration * 1000:.2f}ms ---")
                 
             reset_context(token)
