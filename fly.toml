@@ -1,7 +1,7 @@
 # fly.toml — Fly.io deployment configuration for SentinelStack
 # Docs: https://fly.io/docs/reference/configuration/
 
-app = "YOUR_APP_NAME"   # ← change this to your unique app name (e.g. sentinelstack-rajat)
+app = "sentinelstack-rajat"
 primary_region = "bom"  # Mumbai — closest region to India
 
 [build]
