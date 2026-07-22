@@ -1,0 +1,32 @@
+# fly.toml — Fly.io deployment configuration for SentinelStack
+# Docs: https://fly.io/docs/reference/configuration/
+
+app = "YOUR_APP_NAME"   # ← change this to your unique app name (e.g. sentinelstack-rajat)
+primary_region = "bom"  # Mumbai — closest region to India
+
+[build]
+  # Fly.io reads our existing multi-stage Dockerfile directly. No changes needed.
+
+[deploy]
+  # Run Alembic migrations before the new version goes live.
+  # This guarantees schema is always in sync before traffic hits the new code.
+  release_command = "alembic upgrade head"
+
+[[vm]]
+  memory = "512mb"   # bcrypt hashing is CPU-heavy; 256MB is too tight
+  cpu_kind = "shared"
+  cpus = 1
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false   # CRITICAL: never sleep — this is a gateway
+  auto_start_machines = true
+  min_machines_running = 1     # Always keep at least 1 instance alive
+
+  [[http_service.checks]]
+    grace_period = "15s"       # Give alembic + startup time to complete
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
