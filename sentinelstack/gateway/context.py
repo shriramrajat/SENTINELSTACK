@@ -6,6 +6,8 @@ class RequestCtx(BaseModel):
     request_id: str
     client_ip: str
     user_id: Optional[str] = None
+    role: Optional[str] = None
+    tier: Optional[str] = None
     path: str
     method: str
 

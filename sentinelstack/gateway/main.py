@@ -7,6 +7,7 @@ from sentinelstack.gateway.middleware import RequestContextMiddleware
 from sentinelstack.gateway.context import get_context
 from sentinelstack.logging.service import log_service
 from sentinelstack.stats.router import router as stats_router
+from sentinelstack.admin.router import router as admin_router
 from fastapi.staticfiles import StaticFiles
 from sentinelstack.ai.router import router as ai_router
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
@@ -43,6 +44,7 @@ app.add_middleware(RequestContextMiddleware)
 app.include_router(auth_router)
 app.include_router(stats_router)
 app.include_router(ai_router)
+app.include_router(admin_router)
 
 # Mount static files for dashboard (ensure directory exists)
 app.mount("/dashboard", StaticFiles(directory="sentinelstack/static", html=True), name="static")
