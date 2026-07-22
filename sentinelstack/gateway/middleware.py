@@ -70,6 +70,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
         # 2. Attempt Identity Extraction (Optimistic — failures are silent)
         user_id = None
+        role = None
+        tier = None
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
@@ -81,6 +83,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                     algorithms=[settings.ALGORITHM]
                 )
                 user_id = payload.get("sub")
+                role = payload.get("role")
+                tier = payload.get("tier", "free")
             except JWTError:
                 # Invalid/Expired token → treat as anonymous
                 pass
@@ -90,6 +94,8 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             request_id=request_id,
             client_ip=client_ip,
             user_id=user_id,
+            role=role,
+            tier=tier,
             path=request.url.path,
             method=request.method
         )

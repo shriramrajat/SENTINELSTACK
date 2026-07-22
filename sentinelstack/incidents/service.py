@@ -2,8 +2,11 @@ import json
 from datetime import datetime
 from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
+import asyncio
 from sentinelstack.aggregation.models import RequestMetric
 from sentinelstack.incidents.models import Incident
+from sentinelstack.config import settings
 
 # Threshold Configuration
 ERROR_RATE_THRESHOLD = 0.05   # 5%
@@ -59,6 +62,10 @@ class IncidentService:
                 await session.commit()
                 await session.refresh(new_incident)
 
+                # Fire Webhook Alert asynchronously
+                if settings.WEBHOOK_URL:
+                    asyncio.create_task(self._fire_webhook(new_incident))
+
                 # Trigger AI analysis synchronously and persist the result.
                 # In a distributed system this would be a queue message; for v1
                 # we run it inline since aggregation already runs in background.
@@ -109,6 +116,27 @@ class IncidentService:
                     f" [Resolved. Final Error Rate: {error_rate:.1%}]"
                 )
                 await session.commit()
+
+    async def _fire_webhook(self, incident: Incident):
+        """Send an asynchronous HTTP POST to the configured webhook URL."""
+        payload = {
+            "incident_id": incident.id,
+            "status": incident.status,
+            "severity": incident.severity,
+            "description": incident.description,
+            "start_time": incident.start_time.isoformat() if incident.start_time else None,
+            "affected_endpoints": incident.affected_endpoints
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    settings.WEBHOOK_URL,
+                    json=payload,
+                    timeout=5.0
+                )
+                print(f"INFO:    Webhook fired. Status: {response.status_code}")
+        except Exception as e:
+            print(f"WARN:    Failed to fire webhook: {e}")
 
 
 # Global Instance
