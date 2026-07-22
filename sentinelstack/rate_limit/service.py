@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 from sentinelstack.rate_limit.backend import limiter_backend
 from sentinelstack.gateway.context import RequestCtx
@@ -41,6 +42,5 @@ class RateLimitService:
         
         return allowed, headers
 
-import time
 # Global Instance
 rate_limiter = RateLimitService()
