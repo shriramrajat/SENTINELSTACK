@@ -10,7 +10,10 @@ FLUSH_INTERVAL = 5.0 # Seconds
 
 class LogService:
     def __init__(self):
-        self.queue: asyncio.Queue[Dict] = asyncio.Queue()
+        # maxsize prevents unbounded memory growth under extreme load.
+        # Logs are intentionally dropped when the queue is full — availability
+        # beats data completeness here (documented trade-off).
+        self.queue: asyncio.Queue[Dict] = asyncio.Queue(maxsize=10_000)
         self.is_running = False
 
     def log_request(self, log_data: Dict):

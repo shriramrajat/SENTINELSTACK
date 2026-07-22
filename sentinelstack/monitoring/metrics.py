@@ -29,10 +29,13 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
 # ---------------------------------------------------------
 
 # Counter: Rate limit hits (429s)
+# NOTE: client_ip label intentionally omitted — it creates unbounded
+# cardinality (one time-series per unique IP) that will OOM Prometheus.
+# Use path alone for meaningful, bounded alerting.
 RATE_LIMIT_HITS = Counter(
     "rate_limit_hits_total",
     "Total number of rate limit rejections",
-    ["path", "client_ip"]
+    ["path"]
 )
 
 # Gauge: Size of the async log queue
