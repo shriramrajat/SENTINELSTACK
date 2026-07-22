@@ -20,9 +20,14 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     future=True,
-    # asyncpg requires ssl=True to be passed as a connect_arg, not in the URL,
-    # for compatibility with SQLAlchemy's engine layer.
-    connect_args={"ssl": True} if _is_cloud_db else {},
+    # asyncpg requires ssl=True to be passed as a connect_arg, not in the URL.
+    # We also MUST disable statement caching because Supabase PgBouncer (Transaction Pooler)
+    # does not support prepared statements properly.
+    connect_args={
+        "ssl": True if _is_cloud_db else False,
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    },
 )
 
 # 2. Create the Session Factory
