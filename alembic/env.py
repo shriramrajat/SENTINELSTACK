@@ -25,8 +25,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the SQLAlchemy URL from our settings (environment variables!)
-# This is CRITICAL. Without this, it tries to use the empty string in alembic.ini
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# We MUST escape '%' to '%%' because Alembic uses configparser which interprets '%' for interpolation.
+escaped_url = settings.DATABASE_URL.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", escaped_url)
 
 # target_metadata is what allows autogenerate to see the difference between
 # your Python models and the SQL database
