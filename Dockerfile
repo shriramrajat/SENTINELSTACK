@@ -67,5 +67,5 @@ USER appuser
 EXPOSE 8000
 
 # Command to run the application
-# We use the array format explicitly
-CMD ["uvicorn", "sentinelstack.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run database migrations first, then start the server
+CMD ["sh", "-c", "alembic upgrade head && uvicorn sentinelstack.gateway.main:app --host 0.0.0.0 --port 8000"]
