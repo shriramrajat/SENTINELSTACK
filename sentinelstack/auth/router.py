@@ -6,6 +6,8 @@ from sentinelstack.database import get_db
 from sentinelstack.auth.schemas import UserCreate, UserResponse, Token
 from sentinelstack.auth.service import AuthService
 from sentinelstack.auth.security import create_access_token
+from sentinelstack.auth.dependencies import get_current_user
+from sentinelstack.auth.models import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -28,3 +30,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     
     access_token = create_access_token(subject=user.id, role=user.role)
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Returns the profile of the currently authenticated user.
+    Requires a valid Bearer token in the Authorization header.
+    """
+    return current_user
