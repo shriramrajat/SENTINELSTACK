@@ -15,6 +15,7 @@ class UserResponse(UserBase):
     id: UUID4
     is_active: bool
     role: str
+    tier: str
     created_at: datetime
 
     class Config:
@@ -28,3 +29,4 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     id: Optional[str] = None
     role: Optional[str] = None
+    tier: Optional[str] = None

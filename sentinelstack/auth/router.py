@@ -28,7 +28,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(subject=user.id, role=user.role)
+    access_token = create_access_token(subject=user.id, role=user.role, tier=user.tier)
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)

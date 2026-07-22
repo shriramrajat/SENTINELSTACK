@@ -16,6 +16,7 @@ class User(Base):
     
     # Authorization & Status
     role = Column(String, default="user", nullable=False)  # 'admin' or 'user'
+    tier = Column(String, default="free", nullable=False)  # 'free', 'pro', 'enterprise'
     is_active = Column(Boolean, default=True, nullable=False)
     
     # Audit Trail
