@@ -1,98 +1,98 @@
 name: SentinelStack CI
 
-# Trigger on push to main or pull requests
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
+  # -------------------------------------------------------------------
   # JOB 1: Code Quality & Testing
+  # Docker Hub login happens before container pulls to avoid rate-limits.
+  # -------------------------------------------------------------------
   validate:
     runs-on: ubuntu-latest
-
-    # Authenticate with Docker Hub first to avoid pull rate-limit timeouts.
-    # Credentials stored as repository secrets: DOCKERHUB_USERNAME / DOCKERHUB_TOKEN
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    # Service containers for integration tests
-    # (must come after checkout so login-action is available)
-    - name: Start service containers
-      run: |
-        docker network create sentinel_ci || true
-        docker run -d --name ci_postgres --network sentinel_ci \
-          -e POSTGRES_USER=test_user \
-          -e POSTGRES_PASSWORD=test_password \
-          -e POSTGRES_DB=sentinel_test \
-          -p 5432:5432 \
-          postgres:15-alpine
-        docker run -d --name ci_redis --network sentinel_ci \
-          -p 6379:6379 \
-          redis:7-alpine
-        # Wait for postgres to be ready
-        for i in $(seq 1 20); do
-          docker exec ci_postgres pg_isready -U test_user && break
-          echo "Waiting for postgres... ($i)"
-          sleep 3
-        done
-        # Wait for redis to be ready
-        for i in $(seq 1 10); do
-          docker exec ci_redis redis-cli ping | grep -q PONG && break
-          echo "Waiting for redis... ($i)"
-          sleep 2
-        done
+      - name: Start service containers (Postgres + Redis)
+        run: |
+          docker network create sentinel_ci || true
 
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+          docker run -d --name ci_postgres --network sentinel_ci \
+            -e POSTGRES_USER=test_user \
+            -e POSTGRES_PASSWORD=test_password \
+            -e POSTGRES_DB=sentinel_test \
+            -p 5432:5432 \
+            postgres:15-alpine
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest httpx
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          docker run -d --name ci_redis --network sentinel_ci \
+            -p 6379:6379 \
+            redis:7-alpine
 
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          # Wait for postgres
+          for i in $(seq 1 20); do
+            docker exec ci_postgres pg_isready -U test_user && break
+            echo "Waiting for postgres... ($i/20)"
+            sleep 3
+          done
 
-    - name: Run Tests
-      env:
-        ENV: test
-        DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/sentinel_test
-        REDIS_URL: redis://localhost:6379/0
-        SECRET_KEY: test_secret_key
-      run: |
-        # Run migrations to create tables
-        alembic upgrade head
-        # Run pytest
-        pytest
+          # Wait for redis
+          for i in $(seq 1 10); do
+            docker exec ci_redis redis-cli ping | grep -q PONG && break
+            echo "Waiting for redis... ($i/10)"
+            sleep 2
+          done
 
-    - name: Stop service containers
-      if: always()
-      run: |
-        docker stop ci_postgres ci_redis || true
-        docker rm ci_postgres ci_redis || true
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest httpx
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-  # JOB 2: Build Verification
+      - name: Lint with flake8
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run Tests
+        env:
+          ENV: test
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/sentinel_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test_secret_key
+        run: |
+          alembic upgrade head
+          pytest
+
+      - name: Stop service containers
+        if: always()
+        run: |
+          docker stop ci_postgres ci_redis || true
+          docker rm ci_postgres ci_redis || true
+
+  # -------------------------------------------------------------------
+  # JOB 2: Docker Image Build Verification
+  # -------------------------------------------------------------------
   docker-build:
     needs: validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -103,13 +103,15 @@ jobs:
       - name: Build Docker Image
         run: docker build . --file Dockerfile --tag sentinelstack:latest
 
-
-  # JOB 3: Performance Benchmark
+  # -------------------------------------------------------------------
+  # JOB 3: Performance Benchmark (k6)
+  # -------------------------------------------------------------------
   benchmark:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -119,11 +121,9 @@ jobs:
 
       - name: Run k6 local benchmark
         run: |
-          # 1. Start App in Background
           docker compose -f docker-compose.prod.yml up -d
-
-          # 2. Give it time to boot
           sleep 10
-
-          # 3. Run k6 (1k RPM test)
-          docker run --network host -v "${PWD}:/src" -w /src grafana/k6 run benchmarks/k6_benchmark_script.js --env TARGET_RPM=1000 --env BASE_URL=http://localhost:8000
+          docker run --network host -v "${PWD}:/src" -w /src \
+            grafana/k6 run benchmarks/k6_benchmark_script.js \
+            --env TARGET_RPM=1000 \
+            --env BASE_URL=http://localhost:8000
