@@ -38,6 +38,7 @@ class TestRateLimitService:
         ctx = MagicMock(spec=RequestCtx)
         ctx.user_id = None
         ctx.client_ip = "192.168.1.5"
+        ctx.tier = None  # Must be set explicitly; unset spec attrs return truthy MagicMock
 
         # 2. Mock Backend Response (Allowed)
         # Return format: (allowed, remaining, retry_after)
@@ -64,7 +65,8 @@ class TestRateLimitService:
         # 1. Setup Context (Has User ID)
         ctx = MagicMock(spec=RequestCtx)
         ctx.user_id = "user_123"
-        ctx.client_ip = "192.168.1.5" # IP should be ignored for logic
+        ctx.client_ip = "192.168.1.5"  # IP should be ignored for logic
+        ctx.tier = "free"  # Explicitly set tier so service resolves capacity=60 correctly
 
         # 2. Mock Backend Response (Allowed)
         self.mock_limiter.check_limit.return_value = (True, 55, 0)
@@ -88,6 +90,7 @@ class TestRateLimitService:
         ctx = MagicMock(spec=RequestCtx)
         ctx.user_id = None
         ctx.client_ip = "10.0.0.1"
+        ctx.tier = None  # Must be set explicitly; unset spec attrs return truthy MagicMock
 
         # 1. Mock Backend to say "Rejected, retry in 5s"
         self.mock_limiter.check_limit.return_value = (False, 0, 5.0)
