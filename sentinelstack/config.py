@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = "unsafe-development-secret-key-change-in-prod"
+    ALGORITHM: str = "HS256"
     # Operational & Logic Settings
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     INCIDENT_THRESHOLD_LATENCY_MS: float = 2000.0

@@ -24,7 +24,7 @@ engine = create_async_engine(
     # We also MUST disable statement caching because Supabase PgBouncer (Transaction Pooler)
     # does not support prepared statements properly.
     connect_args={
-        "ssl": True if _is_cloud_db else False,
+        "ssl": "require" if _is_cloud_db else False,
         "statement_cache_size": 0,
         "prepared_statement_cache_size": 0,
     },

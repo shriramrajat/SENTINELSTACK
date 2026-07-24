@@ -2,7 +2,7 @@
 
 > **A High-Performance API Gateway Infrastructure for Control, Security, and Observability.**
 
-### 🔴 **[Live Deployment](YOUR_DEPLOYMENT_URL_HERE)**
+### 🔴 **[Live Deployment](https://sentinelstack-0x15.onrender.com)**
 
 | **Live Dashboard** | **Grafana Metrics** |
 |:---:|:---:|
