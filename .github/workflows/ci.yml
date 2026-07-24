@@ -11,35 +11,44 @@ jobs:
   # JOB 1: Code Quality & Testing
   validate:
     runs-on: ubuntu-latest
-    
-    # Service containers for integration tests
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: sentinel_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    # Authenticate with Docker Hub first to avoid pull rate-limit timeouts.
+    # Credentials stored as repository secrets: DOCKERHUB_USERNAME / DOCKERHUB_TOKEN
     steps:
     - uses: actions/checkout@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # Service containers for integration tests
+    # (must come after checkout so login-action is available)
+    - name: Start service containers
+      run: |
+        docker network create sentinel_ci || true
+        docker run -d --name ci_postgres --network sentinel_ci \
+          -e POSTGRES_USER=test_user \
+          -e POSTGRES_PASSWORD=test_password \
+          -e POSTGRES_DB=sentinel_test \
+          -p 5432:5432 \
+          postgres:15-alpine
+        docker run -d --name ci_redis --network sentinel_ci \
+          -p 6379:6379 \
+          redis:7-alpine
+        # Wait for postgres to be ready
+        for i in $(seq 1 20); do
+          docker exec ci_postgres pg_isready -U test_user && break
+          echo "Waiting for postgres... ($i)"
+          sleep 3
+        done
+        # Wait for redis to be ready
+        for i in $(seq 1 10); do
+          docker exec ci_redis redis-cli ping | grep -q PONG && break
+          echo "Waiting for redis... ($i)"
+          sleep 2
+        done
 
     - name: Set up Python 3.10
       uses: actions/setup-python@v4
@@ -59,19 +68,23 @@ jobs:
         # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-# ... (previous content)
     - name: Run Tests
       env:
         ENV: test
-        # We must set the full DATABASE_URL because config.py does not auto-construct it from parts
         DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/sentinel_test
         REDIS_URL: redis://localhost:6379/0
         SECRET_KEY: test_secret_key
       run: |
         # Run migrations to create tables
         alembic upgrade head
-        # Run pytest. 
+        # Run pytest
         pytest
+
+    - name: Stop service containers
+      if: always()
+      run: |
+        docker stop ci_postgres ci_redis || true
+        docker rm ci_postgres ci_redis || true
 
 
   # JOB 2: Build Verification
@@ -80,29 +93,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build Docker Image
         run: docker build . --file Dockerfile --tag sentinelstack:latest
 
-  # JOB 3: Performance Benchmark (NEW)
+
+  # JOB 3: Performance Benchmark
   benchmark:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Run k6 local benchmark
-        # We run the stack and then hit it with k6
         run: |
           # 1. Start App in Background
           docker compose -f docker-compose.prod.yml up -d
-          
+
           # 2. Give it time to boot
           sleep 10
-          
-          # 3. Running k6 (1k RPM test)
-          # Using network="host" so k6 can see the app on localhost if Linux
-          # But in GitHub Actions (Linux), docker containers might need a bridge network
-          # Safer approach: run k6 inside the same compose network or hitting the exposed port
-          
+
+          # 3. Run k6 (1k RPM test)
           docker run --network host -v "${PWD}:/src" -w /src grafana/k6 run benchmarks/k6_benchmark_script.js --env TARGET_RPM=1000 --env BASE_URL=http://localhost:8000
