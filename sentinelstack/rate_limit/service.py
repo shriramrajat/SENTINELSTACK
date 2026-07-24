@@ -4,8 +4,9 @@ from sentinelstack.rate_limit.backend import limiter_backend
 from sentinelstack.gateway.context import RequestCtx
 
 # Configuration (Could be moved to settings later)
-ANON_LIMIT = 10      # requests per minute
+ANON_LIMIT = 10      # requests per minute for anonymous / unauthenticated IPs
 ANON_RATE = 10 / 60  # refill rate per second
+USER_LIMIT = 60      # requests per minute for authenticated free-tier users
 
 TIER_LIMITS = {
     "free": 60,       # 60 / min
